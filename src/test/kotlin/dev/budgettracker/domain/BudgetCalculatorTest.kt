@@ -18,8 +18,8 @@ class BudgetCalculatorTest {
             MonthlyBudget(month, Money(Currency.AED, 20000)),
             listOf(expense(8000), expense(4000), expense(50000, LocalDate.of(2026, 9, 30))),
         )
-        assertEquals(12000, result.spent.minorUnits)
-        assertEquals(8000, result.varianceMinorUnits)
+        assertEquals(12000L, result.spent.minorUnits)
+        assertEquals(8000L, result.varianceMinorUnits)
         assertEquals(VarianceStatus.SAVED, result.status)
     }
 
@@ -28,7 +28,7 @@ class BudgetCalculatorTest {
         val result = BudgetCalculator.summarize(
             MonthlyBudget(month, Money(Currency.AED, 10000)), listOf(expense(12500)),
         )
-        assertEquals(-2500, result.varianceMinorUnits)
+        assertEquals(-2500L, result.varianceMinorUnits)
         assertEquals(VarianceStatus.OVERSPENT, result.status)
     }
 
