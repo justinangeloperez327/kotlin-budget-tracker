@@ -22,7 +22,7 @@ jobs:
         run: |
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;35.0.0"
       - name: Build and unit tests
-        run: gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest
       - name: Upload debug APK (manual install only)
         uses: actions/upload-artifact@v6
         with:

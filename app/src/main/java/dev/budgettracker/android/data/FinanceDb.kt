@@ -13,7 +13,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 /** Device-only storage for the first Android milestone. No web account or sync yet. */
-class FinanceDb(context: Context): SQLiteOpenHelper(context, "finance.db", null, 1) {
+class FinanceDb(context: Context, databaseName: String = "finance.db"): SQLiteOpenHelper(context, databaseName, null, 1) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE budgets(month TEXT PRIMARY KEY, amount INTEGER NOT NULL CHECK(amount>=0))")
         db.execSQL("CREATE TABLE allocations(month TEXT NOT NULL, category TEXT NOT NULL, amount INTEGER NOT NULL CHECK(amount>=0), PRIMARY KEY(month,category))")

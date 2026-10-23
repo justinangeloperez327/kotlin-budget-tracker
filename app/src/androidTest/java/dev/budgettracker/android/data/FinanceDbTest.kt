@@ -15,19 +15,19 @@ import org.junit.runner.RunWith
 class FinanceDbTest {
     @Test fun planAndExpenseEditsSurviveDatabaseReopen() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val dbName = "finance.db"
+        val dbName = "group3-instrumentation-test.db"
         // Isolated instrumented app profile only. Never run this test against user finance data.
         context.deleteDatabase(dbName)
         val month = YearMonth.of(2026, 10)
         val id = java.util.UUID.randomUUID().toString()
-        FinanceDb(context).use { store ->
+        FinanceDb(context, dbName).use { store ->
             store.savePlan(month, 10000L, mapOf(Category.FOOD to 15000L))
             store.addExpense(Expense(id, "Lunch", 1200L, Category.FOOD, LocalDate.of(2026, 10, 5)))
             store.updateManualExpense(Expense(id, "Groceries", 1350L, Category.FOOD, LocalDate.of(2026, 9, 29)))
             assertEquals(0, store.load(month).expenses.size)
             assertEquals(1, store.loadAllExpenses().size)
         }
-        FinanceDb(context).use { store ->
+        FinanceDb(context, dbName).use { store ->
             val october = store.load(month)
             assertEquals(10000L, october.budget)
             assertEquals(15000L, october.allocations[Category.FOOD])
@@ -43,8 +43,9 @@ class FinanceDbTest {
 
     @Test fun invalidPlanDoesNotOverwriteExistingBudget() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase("finance.db")
-        FinanceDb(context).use { store ->
+        val dbName = "group3-instrumentation-test.db"
+        context.deleteDatabase(dbName)
+        FinanceDb(context, dbName).use { store ->
             val month = YearMonth.of(2026, 10)
             store.savePlan(month, 50000L, mapOf(Category.FOOD to 10000L))
             assertThrows(IllegalArgumentException::class.java) {
