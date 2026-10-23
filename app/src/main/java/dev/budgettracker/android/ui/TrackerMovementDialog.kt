@@ -16,7 +16,7 @@ import java.time.YearMonth
 import org.json.JSONObject
 
 @Composable
-fun TrackerMovementDialog(model:FinanceViewModel,kind:TrackerKind,parent:JSONObject,onClose:()->Unit) {
+fun TrackerMovementDialog(model:FinanceViewModel,kind:TrackerKind,parent:JSONObject,defaultPeriod:YearMonth,onClose:()->Unit) {
     val id=parent.getString("id")
     var amount by remember(id){mutableStateOf(
         if(kind==TrackerKind.BILL)
@@ -24,7 +24,7 @@ fun TrackerMovementDialog(model:FinanceViewModel,kind:TrackerKind,parent:JSONObj
         else ""
     )}
     var date by remember(id){mutableStateOf(LocalDate.now().toString())}
-    var period by remember(id){mutableStateOf(YearMonth.now().toString())}
+    var period by remember(id,defaultPeriod){mutableStateOf(defaultPeriod.toString())}
     var reference by remember(id){mutableStateOf("")}
     var notes by remember(id){mutableStateOf("")}
     var error by remember{mutableStateOf<String?>(null)}
