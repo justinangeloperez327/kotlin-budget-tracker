@@ -144,6 +144,23 @@ object TrackerEngine {
         }
         return maxOf(0L, target - paid(data,kind,parentId))
     }
+    /** Bill occurrence preview may inspect past or future months without marking unpaid months as expenses. */
+    fun billStatus(data: JSONObject, bill: JSONObject, period: YearMonth,
+                   asOf: LocalDate = LocalDate.now()): String {
+        if (!occurs(bill,period)) return "Not scheduled"
+        val paid=rows(data,"billPayments").any {
+            it.getString("billId")==bill.getString("id") && it.getString("period")==period.toString()
+        }
+        if (paid) return "Paid"
+        if (!bill.optBoolean("active")) return "Inactive"
+        val due=dueDate(bill,period)
+        return when {
+            due.isBefore(asOf) -> "Overdue"
+            ChronoUnit.DAYS.between(asOf,due)<=7L -> "Due soon"
+            else -> "Upcoming"
+        }
+    }
+
     fun status(data: JSONObject, kind: TrackerKind, parent: JSONObject, asOf: LocalDate): String {
         val id=parent.getString("id")
         return when(kind) {
@@ -161,21 +178,7 @@ object TrackerEngine {
                     date(parent.getString("targetDate")).isBefore(asOf) -> "Past due"
                 else -> "Active"
             }
-            TrackerKind.BILL -> {
-                val period=YearMonth.from(asOf)
-                if (!occurs(parent,period)) "Not scheduled"
-                else if (rows(data,kind.movements).any {
-                    it.getString("billId")==id && it.getString("period")==period.toString()
-                }) "Paid"
-                else {
-                    val due=dueDate(parent,period)
-                    when {
-                        due.isBefore(asOf) -> "Overdue"
-                        ChronoUnit.DAYS.between(asOf,due)<=7L -> "Due soon"
-                        else -> "Upcoming"
-                    }
-                }
-            }
+            TrackerKind.BILL -> billStatus(data,parent,YearMonth.from(asOf),asOf)
         }
     }
 
