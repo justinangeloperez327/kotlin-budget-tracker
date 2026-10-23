@@ -2,11 +2,11 @@
 
 This is the **native Android Kotlin/Jetpack Compose port** of [next-budget-tracker](https://github.com/justinangeloperez327/next-budget-tracker), **not a Ktor website**.
 
-## Current state: Group 3 — budget and expense parity
+## Current state: Group 4 — recurring bills, debts, and savings
 
 Android Studio project (Kotlin 2.2.21, Android Gradle Plugin 8.13.2, Gradle 8.13, Jetpack Compose BOM 2025.10.01 / Material 3, SDK 36, minimum API 26). Includes a responsive native navigation drawer, Sakura-inspired finance UI, complete monthly budget plan editor, category charts, device-only or web-account expense add/edit/delete, global search/category/month filters, safe CSV document export, character palettes and appearance modes, unit tests, Android instrumentation test sources and GitHub Actions CI.
 
-**Not yet an exact functional copy.** Online authentication and revision-aware synchronization are implemented but require the updated backend to be deployed manually. Bills, debt, savings, remittances, SSS, PhilHealth, Pag-IBIG, MP2, advanced historical reports, reminders and companion artwork are not yet implemented. The app labels incomplete sections rather than fabricating records. [See the complete parity checklist](docs/PARITY_CHECKLIST.md).
+**Not yet an exact functional copy.** Online authentication and revision-aware synchronization are implemented but require the updated backend to be deployed manually. Bills, debt and savings now have native trackers with history. Remittances, SSS, PhilHealth, Pag-IBIG, MP2, advanced historical reports, reminders and companion artwork are not yet implemented. The app labels incomplete sections rather than fabricating records. [See the complete parity checklist](docs/PARITY_CHECKLIST.md).
 
 ## Run in Android Studio
 
@@ -48,3 +48,17 @@ Android CI keeps a debug APK as a seven-day workflow artifact for manual install
 - CSV export via Android's system document picker. Exports only filtered results, includes an UTF-8 BOM and escapes quotes, commas and spreadsheet formula prefixes. Android needs no external storage permission.
 - Regression tests port selected source budget-calculation fixtures. Android database instrumentation tests use their own isolated test database; CI compiles them but does not run emulator tests yet.
 - No automatic local-to-account migration, no offline write queue, and no automatic deployment to Vercel or Google Play. Online save conflicts and uncertain outcomes still require manual refresh.
+
+## Group 4 — Bills, Debts and Savings
+
+- Native Bills, Debt / Utang and Savings screens: create, edit, activate/deactivate, browse records and history; confirm before deleting a record or undoing a movement.
+- Recurring bills: monthly, quarterly or yearly, configurable due day (clamped to month end), start/end period, category, notes, period selection, due/paid status, one payment per bill-period.
+- Each paid bill generates **one linked AED expense** with the same amount, date and category. Undoing a payment removes that linked expense. Renaming or recategorizing a bill updates its payment expenses.
+- Debts: lender, original balance, due date, optional monthly target, active state, remaining balance, payment progress, repayments constrained to remaining principal. Repayments create one linked AED expense; debt principal itself is not an expense.
+- Savings goals: target date, destination/wallet, optional monthly target, saved and remaining balance, deposit history and progress. Savings deposits **never** create consumption expenses.
+- Records with payment/deposit history cannot be deleted; deactivate/pause the record instead. Payment and deposit records can be undone with confirmation.
+- Offline: SQLite schema v2 non-destructively migrates the original v1 database. Tracker state and its linked expense changes commit/rollback in the SAME transaction. Existing budgets and manual expenses remain intact.
+- Web-account: the original source-shaped records live in the full canonical workspace; every change uses the shared validated, optimistic-revision API from Group 2. No automatic merge of device-only and online data.
+- Tests cover source calculation policies, recurrence/date clamping, unique payment periods, repayments, savings transfers, linked expense metadata, and isolated SQLite transactions. CI builds debug APK and tests; instrumentation runs only when explicitly executed with an emulator.
+
+No automatic deployment, Play Store publication or pull requests.
