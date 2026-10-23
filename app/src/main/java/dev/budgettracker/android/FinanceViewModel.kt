@@ -107,7 +107,6 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
                     syncBlocked = false
                 }
                 error = null
-                onSaved()
             } catch (ex: Exception) {
                 if (session != null) {
                     syncBlocked = true
@@ -227,6 +226,7 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
                         data = withContext(Dispatchers.IO) { db.load(requested) }
                 }
                 error = null
+                onSaved()
             } catch (ex: Exception) {
                 if (session != null) {
                     if (ex is MobileApiException && ex.status == 401) {
