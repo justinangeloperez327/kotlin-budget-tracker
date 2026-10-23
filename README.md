@@ -4,7 +4,7 @@ This is the **native Android Kotlin/Jetpack Compose port** of [next-budget-track
 
 ## Current state: first Android migration milestone
 
-Android Studio project (Kotlin 2.2.21, Android Gradle Plugin 8.13.2, Gradle 8.13, Jetpack Compose/Material 3, SDK 36, minimum API 26). Includes a responsive native navigation drawer, Sakura-inspired finance UI, local monthly budgets and category allocations, offline expense entry/list/delete, exact AED calculations, character-theme palettes and appearance modes, basic unit tests and GitHub Actions CI.
+Android Studio project (Kotlin 2.2.21, Android Gradle Plugin 8.13.2, Gradle 8.13, Jetpack Compose BOM 2025.10.01 / Material 3, SDK 36, minimum API 26). Includes a responsive native navigation drawer, Sakura-inspired finance UI, local monthly budgets and category allocations, offline expense entry/list/delete, exact AED calculations, character-theme palettes and appearance modes, basic unit tests and GitHub Actions CI.
 
 **Not yet an exact functional copy.** Authentication, sync to Next.js PostgreSQL, bills, debt, savings, remittances, SSS, PhilHealth, Pag-IBIG, MP2, financial reporting, reminders, CSV and companion artwork are not yet implemented. The app labels incomplete sections rather than fabricating records. [See the complete parity checklist](docs/PARITY_CHECKLIST.md).
 
