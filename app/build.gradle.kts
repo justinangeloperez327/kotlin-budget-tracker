@@ -29,7 +29,7 @@ android {
   buildFeatures { compose = true }
 }
 dependencies {
-  val bom = platform("androidx.compose:compose-bom:2026.09.00")
+  val bom = platform("androidx.compose:compose-bom:2025.10.01")
   implementation(bom)
   androidTestImplementation(bom)
   implementation("androidx.core:core-ktx:1.17.0")
