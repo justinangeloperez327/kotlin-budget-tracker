@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.budgettracker.android.data.FinanceDb
+import dev.budgettracker.android.domain.BudgetFeatures
 import dev.budgettracker.android.domain.Category
 import dev.budgettracker.android.domain.Expense
 import dev.budgettracker.android.domain.FinanceSnapshot
@@ -38,11 +39,13 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
 
     var month by mutableStateOf(YearMonth.now()); private set
     var data by mutableStateOf(FinanceSnapshot(month)); private set
+    var allExpenses by mutableStateOf<List<Expense>>(emptyList()); private set
     var error by mutableStateOf<String?>(null); private set
     var loading by mutableStateOf(true); private set
     var syncBlocked by mutableStateOf(false); private set
     var accountEmail by mutableStateOf<String?>(null); private set
     var savedExpenseSequence by mutableStateOf(0L); private set
+    var savedMutationSequence by mutableStateOf(0L); private set
     var accountConfigured by mutableStateOf(false); private set
     var serverOrigin by mutableStateOf(""); private set
     var theme by mutableStateOf(preferences.getString("palette", "sakura") ?: "sakura"); private set
@@ -99,11 +102,15 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
                         accountEmail = latest.email
                         accountConfigured = true
                         if (month == requested) data = latest.forMonth(requested)
+                        allExpenses = latest.allExpenses()
                         syncBlocked = false
                     }
                 } else {
-                    val local = withContext(Dispatchers.IO) { db.load(requested) }
-                    if (mobileSession == null && month == requested) data = local
+                    val (local, ledger) = withContext(Dispatchers.IO) { db.load(requested) to db.loadAllExpenses() }
+                    if (mobileSession == null && month == requested) {
+                        data = local
+                        allExpenses = ledger
+                    }
                     syncBlocked = false
                 }
                 error = null
@@ -155,6 +162,7 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
                 remote = result.second
                 accountEmail = result.second.email
                 data = result.second.forMonth(month)
+                allExpenses = result.second.allExpenses()
                 syncBlocked = false
                 error = null
             } catch (ex: Exception) {
@@ -178,7 +186,11 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
             } catch (_: Exception) {
                 error = "Signed out on this device. The old remote token will expire automatically; server revocation could not be confirmed."
             }
-            try { data = withContext(Dispatchers.IO) { db.load(month) } }
+            try {
+                val (local, ledger) = withContext(Dispatchers.IO) { db.load(month) to db.loadAllExpenses() }
+                data = local
+                allExpenses = ledger
+            }
             catch (ex: Exception) { error = ex.message ?: "Unable to read device-only records" }
             loading = false
         }
@@ -194,6 +206,7 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
         serverOrigin = ""
         // Never display a previous account's finance data after logout/session expiry.
         data = FinanceSnapshot(month)
+        allExpenses = emptyList()
     }
 
     private fun write(local: () -> Unit, mobile: (ServerSnapshot) -> JSONObject, onSaved: () -> Unit = {}) {
@@ -219,13 +232,20 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
                         remote = latest
                         accountEmail = latest.email
                         data = latest.forMonth(month)
+                        allExpenses = latest.allExpenses()
                     }
                 } else {
                     withContext(Dispatchers.IO) { local() }
-                    if (mobileSession == null && month == requested)
-                        data = withContext(Dispatchers.IO) { db.load(requested) }
+                    if (mobileSession == null) {
+                        val (localSnapshot, ledger) = withContext(Dispatchers.IO) {
+                            db.load(month) to db.loadAllExpenses()
+                        }
+                        data = localSnapshot
+                        allExpenses = ledger
+                    }
                 }
                 error = null
+                savedMutationSequence += 1L
                 onSaved()
             } catch (ex: Exception) {
                 if (session != null) {
@@ -261,17 +281,57 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
             mobile = { it.updateAllocation(target, category, parseMinor(input)) },
         )
     }
+    /** Save the complete budget plan in one atomic SQLite or server revision transaction. */
+    fun savePlan(budget: String, allocations: Map<Category, String>) {
+        val selectedMonth = month
+        write(
+            local = {
+                val amount = parseMinor(budget)
+                val limits = allocations.mapValues { parseMinor(it.value) }
+                BudgetFeatures.plan(selectedMonth, amount, limits)
+                db.savePlan(selectedMonth, amount, limits)
+            },
+            mobile = {
+                val amount = parseMinor(budget)
+                val limits = allocations.mapValues { entry -> parseMinor(entry.value) }
+                BudgetFeatures.plan(selectedMonth, amount, limits)
+                it.updatePlan(selectedMonth, amount, limits)
+            }
+        )
+    }
+
+    fun editExpense(id: String, description: String, amount: String, category: Category, date: String) {
+        val existing = allExpenses.firstOrNull { it.id == id }
+        if (existing == null || existing.source != dev.budgettracker.android.domain.ExpenseSource.MANUAL) {
+            error = "Linked or missing expenses cannot be edited here."
+            return
+        }
+        write(
+            local = {
+                db.updateManualExpense(Expense(
+                    id = id, description = description.trim(), amount = parseMinor(amount),
+                    category = category, date = LocalDate.parse(date)
+                ))
+            },
+            mobile = {
+                it.updateManualExpense(Expense(
+                    id = id, description = description.trim(), amount = parseMinor(amount),
+                    category = category, date = LocalDate.parse(date)
+                ))
+            },
+            onSaved = { savedExpenseSequence += 1L }
+        )
+    }
+
     fun addExpense(description: String, amount: String, category: Category, date: String) {
         write(
             local = {
                 val parsed = LocalDate.parse(date)
-                require(!parsed.isAfter(LocalDate.now())) { "Future expenses are not allowed" }
                 db.addExpense(Expense(description = description.trim(),
                     amount = parseMinor(amount), category = category, date = parsed))
             },
             mobile = {
                 val parsed = LocalDate.parse(date)
-                require(!parsed.isAfter(LocalDate.now())) { "Future expenses are not allowed" }
                 it.addManualExpense(description.trim(), parseMinor(amount), category, parsed)
             },
             onSaved = { savedExpenseSequence += 1L },
