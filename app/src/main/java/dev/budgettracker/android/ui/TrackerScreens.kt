@@ -84,8 +84,30 @@ fun TrackerScreen(model: FinanceViewModel, kind: TrackerKind) {
                         LinearProgressIndicator(progress={ (paid.toDouble()/target).toFloat().coerceIn(0f,1f) },
                             modifier=Modifier.fillMaxWidth())
                         Text("Remaining "+trackerAmount(remaining))
-                        if(parent.has("monthlyTarget"))
-                            Text("Monthly target "+trackerAmount(parent.getLong("monthlyTarget")))
+                        if(kind==TrackerKind.DEBT) {
+                            Text("Lender: "+parent.getString("lender"),style=MaterialTheme.typography.bodySmall)
+                            if(parent.has("dueDate")) Text("Due "+parent.getString("dueDate"),
+                                style=MaterialTheme.typography.bodySmall)
+                        } else {
+                            if(parent.has("destination")) Text("Destination: "+parent.getString("destination"),
+                                style=MaterialTheme.typography.bodySmall)
+                            if(parent.has("targetDate")) Text("Target date "+parent.getString("targetDate"),
+                                style=MaterialTheme.typography.bodySmall)
+                        }
+                        if(parent.has("monthlyTarget")) {
+                            val month=YearMonth.now().toString()
+                            val paidThisMonth=entries.filter { entry ->
+                                entry.getString(if(kind==TrackerKind.SAVINGS)"depositDate" else "paymentDate")
+                                    .startsWith(month)
+                            }.fold(0L){sum,entry->Math.addExact(sum,entry.getLong("amount"))}
+                            val targetAmount=parent.getLong("monthlyTarget")
+                            Text("This month "+trackerAmount(paidThisMonth)+
+                                " / target "+trackerAmount(targetAmount),
+                                style=MaterialTheme.typography.bodySmall)
+                            LinearProgressIndicator(progress={
+                                (paidThisMonth.toDouble()/targetAmount).toFloat().coerceIn(0f,1f)
+                            },modifier=Modifier.fillMaxWidth())
+                        }
                     }
                     Row{
                         TextButton(onClick={selected=parent;showEditor=true},enabled=editable){Text("Edit")}
