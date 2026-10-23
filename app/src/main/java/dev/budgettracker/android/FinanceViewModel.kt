@@ -8,6 +8,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.budgettracker.android.data.FinanceDb
 import dev.budgettracker.android.domain.BudgetFeatures
+import dev.budgettracker.android.domain.TrackerCommand
+import dev.budgettracker.android.domain.TrackerEngine
 import dev.budgettracker.android.domain.Category
 import dev.budgettracker.android.domain.Expense
 import dev.budgettracker.android.domain.FinanceSnapshot
@@ -40,6 +42,7 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
     var month by mutableStateOf(YearMonth.now()); private set
     var data by mutableStateOf(FinanceSnapshot(month)); private set
     var allExpenses by mutableStateOf<List<Expense>>(emptyList()); private set
+    var trackerData by mutableStateOf(TrackerEngine.blank()); private set
     var error by mutableStateOf<String?>(null); private set
     var loading by mutableStateOf(true); private set
     var syncBlocked by mutableStateOf(false); private set
@@ -103,13 +106,17 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
                         accountConfigured = true
                         if (month == requested) data = latest.forMonth(requested)
                         allExpenses = latest.allExpenses()
+                        trackerData = JSONObject(latest.fullData.toString())
                         syncBlocked = false
                     }
                 } else {
-                    val (local, ledger) = withContext(Dispatchers.IO) { db.load(requested) to db.loadAllExpenses() }
+                    val (local, ledger, modules) = withContext(Dispatchers.IO) {
+                        Triple(db.load(requested),db.loadAllExpenses(),db.loadTrackerData())
+                    }
                     if (mobileSession == null && month == requested) {
                         data = local
                         allExpenses = ledger
+                        trackerData = modules
                     }
                     syncBlocked = false
                 }
@@ -163,6 +170,7 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
                 accountEmail = result.second.email
                 data = result.second.forMonth(month)
                 allExpenses = result.second.allExpenses()
+                trackerData = JSONObject(result.second.fullData.toString())
                 syncBlocked = false
                 error = null
             } catch (ex: Exception) {
@@ -187,9 +195,12 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
                 error = "Signed out on this device. The old remote token will expire automatically; server revocation could not be confirmed."
             }
             try {
-                val (local, ledger) = withContext(Dispatchers.IO) { db.load(month) to db.loadAllExpenses() }
+                val (local, ledger, modules) = withContext(Dispatchers.IO) {
+                    Triple(db.load(month),db.loadAllExpenses(),db.loadTrackerData())
+                }
                 data = local
                 allExpenses = ledger
+                trackerData = modules
             }
             catch (ex: Exception) { error = ex.message ?: "Unable to read device-only records" }
             loading = false
@@ -207,6 +218,7 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
         // Never display a previous account's finance data after logout/session expiry.
         data = FinanceSnapshot(month)
         allExpenses = emptyList()
+        trackerData = TrackerEngine.blank()
     }
 
     private fun write(local: () -> Unit, mobile: (ServerSnapshot) -> JSONObject, onSaved: () -> Unit = {}) {
@@ -233,15 +245,17 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
                         accountEmail = latest.email
                         data = latest.forMonth(month)
                         allExpenses = latest.allExpenses()
+                        trackerData = JSONObject(latest.fullData.toString())
                     }
                 } else {
                     withContext(Dispatchers.IO) { local() }
                     if (mobileSession == null) {
-                        val (localSnapshot, ledger) = withContext(Dispatchers.IO) {
-                            db.load(month) to db.loadAllExpenses()
+                        val (localSnapshot, ledger, modules) = withContext(Dispatchers.IO) {
+                            Triple(db.load(month),db.loadAllExpenses(),db.loadTrackerData())
                         }
                         data = localSnapshot
                         allExpenses = ledger
+                        trackerData = modules
                     }
                 }
                 error = null
@@ -266,6 +280,11 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
             } finally { loading = false }
         }
     }
+
+    fun trackerMutation(command: TrackerCommand) = write(
+        local = { db.applyTrackerCommand(command) },
+        mobile = { TrackerEngine.apply(it.fullData,command) }
+    )
 
     fun saveBudget(input: String) {
         val target = month
