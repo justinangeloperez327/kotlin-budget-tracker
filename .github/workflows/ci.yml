@@ -23,5 +23,13 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;35.0.0"
       - name: Build and unit tests
         run: gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest
+      - name: Upload debug APK (manual install only)
+        uses: actions/upload-artifact@v6
+        with:
+          name: kotlin-budget-tracker-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+          if-no-files-found: error
       - name: Android lint
         run: gradle --no-daemon :app:lintDebug
+
