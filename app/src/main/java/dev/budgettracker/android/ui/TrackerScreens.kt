@@ -25,6 +25,7 @@ fun TrackerScreen(model: FinanceViewModel, kind: TrackerKind) {
     var selected by remember { mutableStateOf<JSONObject?>(null) }
     var showEditor by remember { mutableStateOf(false) }
     var paying by remember { mutableStateOf<JSONObject?>(null) }
+    var shownPeriod by remember { mutableStateOf(YearMonth.now()) }
     var confirming by remember { mutableStateOf<TrackerCommand?>(null) }
     val total=parents.fold(0L){ sum,parent->
         Math.addExact(sum,parent.getLong(when(kind){
@@ -44,6 +45,13 @@ fun TrackerScreen(model: FinanceViewModel, kind: TrackerKind) {
             TrackerKind.DEBT->"Repayments create expenses; borrowed principal does not."
             TrackerKind.SAVINGS->"Deposits are transfers to savings, not expenses."
         },style=MaterialTheme.typography.bodySmall)
+        if(kind==TrackerKind.BILL) {
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+                TextButton(onClick={shownPeriod=shownPeriod.minusMonths(1)}){Text("‹ Previous")}
+                Text(shownPeriod.toString(),modifier=Modifier.padding(top=12.dp))
+                TextButton(onClick={shownPeriod=shownPeriod.plusMonths(1)}){Text("Next ›")}
+            }
+        }
         Button(onClick={selected=null;showEditor=true},enabled=editable){Text("Add new")}
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)){
@@ -56,7 +64,9 @@ fun TrackerScreen(model: FinanceViewModel, kind: TrackerKind) {
             val id=parent.getString("id")
             val entries=movements.filter{it.getString(kind.foreignKey)==id}
                 .sortedByDescending{it.getString(if(kind==TrackerKind.SAVINGS)"depositDate" else "paymentDate")}
-            val status=TrackerEngine.status(data,kind,parent,LocalDate.now())
+            val status=if(kind==TrackerKind.BILL)
+                TrackerEngine.billStatus(data,parent,shownPeriod,LocalDate.now())
+                else TrackerEngine.status(data,kind,parent,LocalDate.now())
             val remaining=if(kind==TrackerKind.BILL)0L else TrackerEngine.remaining(data,kind,id)
             Card(Modifier.fillMaxWidth()){
                 Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
@@ -65,8 +75,8 @@ fun TrackerScreen(model: FinanceViewModel, kind: TrackerKind) {
                         MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
                     if(kind==TrackerKind.BILL){
                         Text("Scheduled "+trackerAmount(parent.getLong("amount"))+" · "+parent.getString("frequency"))
-                        if(TrackerEngine.occurs(parent,YearMonth.now()))
-                            Text("Due "+TrackerEngine.dueDate(parent,YearMonth.now()).toString())
+                        if(TrackerEngine.occurs(parent,shownPeriod))
+                            Text("Due "+TrackerEngine.dueDate(parent,shownPeriod).toString())
                     }else{
                         val target=parent.getLong(if(kind==TrackerKind.DEBT)"originalAmount" else "targetAmount")
                         val paid=TrackerEngine.paid(data,kind,id)
@@ -113,7 +123,7 @@ fun TrackerScreen(model: FinanceViewModel, kind: TrackerKind) {
         }
     }
     if(showEditor)TrackerDetailsDialog(model,kind,selected){showEditor=false;selected=null}
-    paying?.let { parent->TrackerMovementDialog(model,kind,parent){paying=null} }
+    paying?.let { parent->TrackerMovementDialog(model,kind,parent,shownPeriod){paying=null} }
     confirming?.let { action->
         val started=remember(action){model.savedMutationSequence}
         LaunchedEffect(model.savedMutationSequence){
