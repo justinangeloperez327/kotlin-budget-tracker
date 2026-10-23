@@ -1,6 +1,5 @@
 package dev.budgettracker.android.network
 
-import dev.budgettracker.android.domain.BudgetSnapshot
 import dev.budgettracker.android.domain.Category
 import dev.budgettracker.android.domain.Expense
 import dev.budgettracker.android.domain.FinanceSnapshot
