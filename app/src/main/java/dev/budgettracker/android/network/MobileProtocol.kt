@@ -54,6 +54,62 @@ data class ServerSnapshot(
         return FinanceSnapshot(month, budget, allocations, expenses.sortedByDescending { it.date })
     }
 
+
+    fun allExpenses(): List<Expense> {
+        val records = fullData.getJSONArray("expenses")
+        return buildList {
+            for (i in 0 until records.length()) {
+                val e = records.getJSONObject(i)
+                val id = e.getString("id")
+                add(Expense(
+                    id = id, description = e.getString("description"),
+                    amount = e.getLong("amount"),
+                    category = Category.entries.first { it.label == e.getString("category") },
+                    date = LocalDate.parse(e.getString("date")),
+                    source = if (isLinkedExpense(id)) ExpenseSource.BILL_PAYMENT else ExpenseSource.MANUAL
+                ))
+            }
+        }.sortedWith(compareByDescending<Expense> { it.date }.thenByDescending { it.id })
+    }
+
+    fun updatePlan(month: YearMonth, budget: Long, allocations: Map<Category, Long>): JSONObject {
+        dev.budgettracker.android.domain.BudgetFeatures.plan(month, budget, allocations)
+        val next = copyData()
+        next.getJSONObject("budgets").put(month.toString(), budget)
+        val allCategories = next.optJSONObject("categoryBudgets") ?: JSONObject().also {
+            next.put("categoryBudgets", it)
+        }
+        val monthCategories = JSONObject()
+        allocations.filterValues { it > 0 }.forEach { (category, limit) ->
+            monthCategories.put(category.label, limit)
+        }
+        allCategories.put(month.toString(), monthCategories)
+        return next
+    }
+
+    fun updateManualExpense(expense: Expense): JSONObject {
+        require(expense.source == ExpenseSource.MANUAL && !isLinkedExpense(expense.id)) {
+            "Linked expenses must be edited from their originating tracker"
+        }
+        require(expense.amount in 1..dev.budgettracker.android.domain.BudgetFeatures.MAX_MINOR)
+        val next = copyData()
+        val items = next.getJSONArray("expenses")
+        var updated = false
+        for (i in 0 until items.length()) {
+            val entry = items.getJSONObject(i)
+            if (entry.getString("id") == expense.id) {
+                entry.put("description", expense.description.trim())
+                entry.put("amount", expense.amount)
+                entry.put("category", expense.category.label)
+                entry.put("date", expense.date.toString())
+                updated = true
+                break
+            }
+        }
+        require(updated) { "Manual expense does not exist" }
+        return next
+    }
+
     private fun linkedIn(arrayName: String, id: String): Boolean {
         val records = fullData.optJSONArray(arrayName) ?: return false
         for (i in 0 until records.length()) {
@@ -87,7 +143,7 @@ data class ServerSnapshot(
     }
 
     fun addManualExpense(description: String, amount: Long, category: Category, date: LocalDate): JSONObject {
-        require(description.isNotBlank() && description.length <= 120 && amount > 0)
+        require(description.isNotBlank() && description.length <= 120 && amount in 1..dev.budgettracker.android.domain.BudgetFeatures.MAX_MINOR)
         val next = copyData()
         next.getJSONArray("expenses").put(JSONObject()
             .put("id", UUID.randomUUID().toString())
