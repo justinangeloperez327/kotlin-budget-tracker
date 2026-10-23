@@ -82,7 +82,7 @@ object ExpenseCsv {
     private fun quote(value: String): String = "\"" + value.replace("\"", "\"\"") + "\""
     private fun safe(value: String): String {
         // Prevent CSV/Excel formula execution when recipients open exported financial records.
-        return quote(if (value.firstOrNull() in listOf('=', '+', '@', '-', '\t', '\r')) "'" + value else value)
+        return quote(if (value.isNotEmpty() && value[0] in charArrayOf('=', '+', '@', '-', '\t', '\r')) "'" + value else value)
     }
     fun render(expenses: List<Expense>): String = buildString {
         append("\uFEFF")
