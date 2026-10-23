@@ -121,6 +121,9 @@ fun BudgetApp(model: FinanceViewModel) {
                         "Dashboard" -> Dashboard(model)
                         "Budget vs. actual" -> BudgetPlanScreen(model)
                         "Expense tracker" -> ExpenseLedgerScreen(model)
+                        "Bills & recurring" -> TrackerScreen(model, dev.budgettracker.android.domain.TrackerKind.BILL)
+                        "Debt / Utang" -> TrackerScreen(model, dev.budgettracker.android.domain.TrackerKind.DEBT)
+                        "Savings goals" -> TrackerScreen(model, dev.budgettracker.android.domain.TrackerKind.SAVINGS)
                         else -> Placeholder(page)
                     }
                 }
