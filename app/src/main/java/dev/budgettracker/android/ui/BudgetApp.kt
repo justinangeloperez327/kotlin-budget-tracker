@@ -119,8 +119,8 @@ fun BudgetApp(model: FinanceViewModel) {
                     }
                     when(page) {
                         "Dashboard" -> Dashboard(model)
-                        "Budget vs. actual" -> Budgets(model)
-                        "Expense tracker" -> Expenses(model)
+                        "Budget vs. actual" -> BudgetPlanScreen(model)
+                        "Expense tracker" -> ExpenseLedgerScreen(model)
                         else -> Placeholder(page)
                     }
                 }
@@ -169,108 +169,6 @@ private fun Dashboard(model: FinanceViewModel) {
                 Text("Philippine finances (PHP)", style = MaterialTheme.typography.titleMedium)
                 Text("SSS, PhilHealth, Pag-IBIG and MP2 are not yet connected. AED and PHP totals remain separate.",
                     modifier = Modifier.padding(top = 10.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun Budgets(model: FinanceViewModel) {
-    val data = model.data
-    val s = BudgetCalculator.summarize(data)
-    var budgetText by remember(model.month, data.budget) {
-        mutableStateOf(Money(Currency.AED, data.budget).decimal().toPlainString())
-    }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        MonthBar(model)
-        Text("Monthly spending plan", style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(vertical = 12.dp))
-        OutlinedTextField(budgetText, { budgetText = it }, label = { Text("AED budget") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            singleLine = true, modifier = Modifier.fillMaxWidth())
-        Button(onClick = { model.saveBudget(budgetText) }, enabled = !model.loading,
-            modifier = Modifier.padding(vertical = 12.dp)) { Text("Save budget") }
-        Stat("Spent", aed(s.spent), variance(s.variance))
-        Stat("Unallocated", aed(s.budget - s.allocated), "Remaining to assign to categories")
-        Text("Category budgets", style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(vertical = 12.dp))
-        Category.entries.forEach { category ->
-            val saved = data.allocations[category] ?: 0L
-            var input by remember(model.month, category, saved) {
-                mutableStateOf(Money(Currency.AED, saved).decimal().toPlainString())
-            }
-            Card(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
-                Column(Modifier.padding(14.dp)) {
-                    Text(category.label, fontWeight = FontWeight.SemiBold)
-                    Text("Spent: " + aed(BudgetCalculator.categorySpent(data, category)),
-                        style = MaterialTheme.typography.bodySmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(input, { input = it }, label = { Text("AED limit") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true, modifier = Modifier.weight(1f))
-                        Button(onClick = { model.saveAllocation(category, input) }, enabled = !model.loading,
-                            modifier = Modifier.padding(top = 8.dp)) { Text("Save") }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun Expenses(model: FinanceViewModel) {
-    var description by rememberSaveable { mutableStateOf("") }
-    var amount by rememberSaveable { mutableStateOf("") }
-    var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
-    var category by rememberSaveable { mutableStateOf(Category.FOOD.name) }
-    var expanded by remember { mutableStateOf(false) }
-    val originalSaveSequence = remember { model.savedExpenseSequence }
-    LaunchedEffect(model.savedExpenseSequence) {
-        if (model.savedExpenseSequence > originalSaveSequence) {
-            description = ""
-            amount = ""
-        }
-    }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        MonthBar(model)
-        Text("Add an expense", style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(vertical = 12.dp))
-        OutlinedTextField(description, {description=it}, label={Text("Description")},
-            singleLine=true, modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(amount, {amount=it}, label={Text("Amount AED")},
-            keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal),
-            singleLine=true, modifier=Modifier.fillMaxWidth().padding(top=8.dp))
-        Row {
-            TextButton(onClick={expanded=true}){Text(Category.valueOf(category).label+" ▾")}
-            DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}){
-                Category.entries.forEach { cat ->
-                    DropdownMenuItem(text={Text(cat.label)},onClick={category=cat.name;expanded=false})
-                }
-            }
-        }
-        OutlinedTextField(date,{date=it},label={Text("Date (YYYY-MM-DD)")},
-            singleLine=true,modifier=Modifier.fillMaxWidth())
-        Button(onClick={
-            // Preserve the draft if a remote request is rejected or its outcome is uncertain.
-            model.addExpense(description,amount,Category.valueOf(category),date)
-        },enabled=!model.loading && description.isNotBlank() && amount.isNotBlank(),
-            modifier=Modifier.fillMaxWidth().padding(vertical=12.dp)){Text("Save expense")}
-        HorizontalDivider()
-        Text("Transactions for "+model.month,style=MaterialTheme.typography.titleMedium,
-            modifier=Modifier.padding(vertical=14.dp))
-        if(model.data.expenses.isEmpty()) Text("No expenses this month. New accounts start empty.")
-        model.data.expenses.forEach { e ->
-            Card(Modifier.fillMaxWidth().padding(bottom=8.dp)) {
-                Row(Modifier.padding(14.dp)) {
-                    Column(Modifier.weight(1f)) {
-                        Text(e.description,fontWeight=FontWeight.SemiBold)
-                        Text(e.category.label+" • "+e.date,style=MaterialTheme.typography.bodySmall)
-                        Text(aed(e.amount),color=MaterialTheme.colorScheme.primary)
-                    }
-                    if(e.source==ExpenseSource.MANUAL){
-                        TextButton(onClick={model.deleteExpense(e.id)},enabled=!model.loading){Text("Delete")}
-                    }
-                }
             }
         }
     }
