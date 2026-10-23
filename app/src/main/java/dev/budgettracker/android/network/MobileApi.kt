@@ -51,7 +51,11 @@ class MobileApi(origin: String) {
             }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val result = if (stream == null) JSONObject() else JSONObject(readBounded(stream))
+            val result = try {
+                if (stream == null) JSONObject() else JSONObject(readBounded(stream))
+            } catch (_: org.json.JSONException) {
+                throw MobileApiException(status, "The server did not return a mobile API response. Verify its manual deployment.")
+            }
             if (status !in 200..299)
                 throw MobileApiException(status, result.optString("error", "Server request failed (HTTP $status)"))
             return result

@@ -42,6 +42,7 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
     var loading by mutableStateOf(true); private set
     var syncBlocked by mutableStateOf(false); private set
     var accountEmail by mutableStateOf<String?>(null); private set
+    var savedExpenseSequence by mutableStateOf(0L); private set
     var accountConfigured by mutableStateOf(false); private set
     var serverOrigin by mutableStateOf(""); private set
     var theme by mutableStateOf(preferences.getString("palette", "sakura") ?: "sakura"); private set
@@ -106,6 +107,7 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
                     syncBlocked = false
                 }
                 error = null
+                onSaved()
             } catch (ex: Exception) {
                 if (session != null) {
                     syncBlocked = true
@@ -195,7 +197,7 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
         data = FinanceSnapshot(month)
     }
 
-    private fun write(local: () -> Unit, mobile: (ServerSnapshot) -> JSONObject) {
+    private fun write(local: () -> Unit, mobile: (ServerSnapshot) -> JSONObject, onSaved: () -> Unit = {}) {
         if (loading || (mobileSession != null && (syncBlocked || remote == null))) {
             error = "Refresh the web account before making changes."
             return
@@ -272,6 +274,7 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
                 require(!parsed.isAfter(LocalDate.now())) { "Future expenses are not allowed" }
                 it.addManualExpense(description.trim(), parseMinor(amount), category, parsed)
             },
+            onSaved = { savedExpenseSequence += 1L },
         )
     }
     fun deleteExpense(id: String) = write(

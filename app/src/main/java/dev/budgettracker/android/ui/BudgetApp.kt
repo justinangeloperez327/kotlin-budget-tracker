@@ -224,6 +224,13 @@ private fun Expenses(model: FinanceViewModel) {
     var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var category by rememberSaveable { mutableStateOf(Category.FOOD.name) }
     var expanded by remember { mutableStateOf(false) }
+    val originalSaveSequence = remember { model.savedExpenseSequence }
+    LaunchedEffect(model.savedExpenseSequence) {
+        if (model.savedExpenseSequence > originalSaveSequence) {
+            description = ""
+            amount = ""
+        }
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         MonthBar(model)
         Text("Add an expense", style = MaterialTheme.typography.titleLarge,
