@@ -29,8 +29,8 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
 
     init { reload() }
 
-    fun setTheme(value: String) { theme=value; preferences.edit().putString("palette",value).apply() }
-    fun setAppearance(value: String) { appearance=value; preferences.edit().putString("mode",value).apply() }
+    fun selectTheme(value: String) { theme=value; preferences.edit().putString("palette",value).apply() }
+    fun selectAppearance(value: String) { appearance=value; preferences.edit().putString("mode",value).apply() }
     fun dismissError(){ error=null }
     fun moveMonth(delta: Long) { month = month.plusMonths(delta); reload() }
     fun reload() {

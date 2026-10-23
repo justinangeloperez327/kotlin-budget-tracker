@@ -267,12 +267,12 @@ private fun ThemePicker(model:FinanceViewModel,onClose:()->Unit) {
                 Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){
                     listOf("light","dark","system").forEach { mode ->
                         FilterChip(selected=model.appearance==mode,
-                            onClick={model.setAppearance(mode)},label={Text(mode)})
+                            onClick={model.selectAppearance(mode)},label={Text(mode)})
                     }
                 }
                 Text("Character palette",style=MaterialTheme.typography.titleSmall)
                 themes.forEach { (key,label) ->
-                    FilterChip(selected=model.theme==key,onClick={model.setTheme(key)},
+                    FilterChip(selected=model.theme==key,onClick={model.selectTheme(key)},
                         label={Text(label)})
                 }
                 Text("Companion illustrations will follow in the UI-parity phase.",
