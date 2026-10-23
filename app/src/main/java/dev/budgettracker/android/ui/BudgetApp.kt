@@ -166,7 +166,26 @@ private fun Dashboard(model: FinanceViewModel) {
         Stat("Monthly budget", aed(s.budget), "AED spending plan")
         Stat("Total spent", aed(s.spent), model.data.expenses.size.toString() + " expenses recorded")
         Stat("Remaining", variance(s.variance), "Budget minus actual")
-        Stat("Bills, debts and savings", "Not connected", "Additional original tracker modules will be ported")
+        val modules = model.trackerData
+        val bills = dev.budgettracker.android.domain.TrackerEngine.rows(modules,"recurringBills")
+        val payments = dev.budgettracker.android.domain.TrackerEngine.rows(modules,"billPayments")
+        val period = java.time.YearMonth.now()
+        val due = bills.filter { bill ->
+            dev.budgettracker.android.domain.TrackerEngine.occurs(bill,period) &&
+                bill.optBoolean("active") &&
+                payments.none { p -> p.getString("billId")==bill.getString("id") &&
+                    p.getString("period")==period.toString() }
+        }.fold(0L) { sum,bill -> Math.addExact(sum,bill.getLong("amount")) }
+        val debtBalance = dev.budgettracker.android.domain.TrackerEngine.rows(modules,"debts")
+            .fold(0L) { sum,debt ->
+                Math.addExact(sum,dev.budgettracker.android.domain.TrackerEngine.remaining(
+                    modules,dev.budgettracker.android.domain.TrackerKind.DEBT,debt.getString("id")))
+            }
+        val savingsBalance = dev.budgettracker.android.domain.TrackerEngine.rows(modules,"savingsDeposits")
+            .fold(0L) { sum,deposit -> Math.addExact(sum,deposit.getLong("amount")) }
+        Stat("Outstanding scheduled bills", aed(due), "Unpaid bills for the current month")
+        Stat("Remaining debt", aed(debtBalance), "Loan balances after recorded repayments")
+        Stat("Savings deposits", aed(savingsBalance), "Recorded transfers, not consumption expenses")
         Card(Modifier.fillMaxWidth().padding(top = 16.dp)) {
             Column(Modifier.padding(20.dp)) {
                 Text("Philippine finances (PHP)", style = MaterialTheme.typography.titleMedium)
