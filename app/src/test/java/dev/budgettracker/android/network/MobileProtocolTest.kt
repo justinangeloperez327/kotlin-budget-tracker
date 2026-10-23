@@ -73,4 +73,39 @@ class MobileProtocolTest {
         assertEquals(2, s.fullData.getJSONArray("expenses").length())
         assertEquals("SSS", next.getJSONArray("governmentAccounts").getJSONObject(0).getString("provider"))
     }
+
+    @Test fun planUpdateIsAtomicAndPreservesLinkedTrackerRecords() {
+        val original = sample()
+        val next = original.updatePlan(
+            YearMonth.of(2026, 10), 10000,
+            mapOf(Category.FOOD to 15000, Category.HEALTH to 1000)
+        )
+        assertEquals(10000L, next.getJSONObject("budgets").getLong("2026-10"))
+        assertEquals(15000L, next.getJSONObject("categoryBudgets")
+            .getJSONObject("2026-10").getLong("Food"))
+        assertEquals(1, next.getJSONArray("mp2Deposits").length())
+        assertEquals(1, next.getJSONArray("governmentAccounts").length())
+        assertEquals(50000L, original.fullData.getJSONObject("budgets").getLong("2026-10"))
+    }
+
+    @Test fun editPreservesExpenseIdentityAndPreventsLinkedMutations() {
+        val server = sample()
+        val changed = server.updateManualExpense(dev.budgettracker.android.domain.Expense(
+            id = "manual-1", description = "Dinner", amount = 1550,
+            category = Category.HEALTH, date = LocalDate.of(2026, 9, 30)
+        ))
+        assertEquals("manual-1", changed.getJSONArray("expenses").getJSONObject(0).getString("id"))
+        assertEquals("Dinner", changed.getJSONArray("expenses").getJSONObject(0).getString("description"))
+        assertEquals("Lunch", server.fullData.getJSONArray("expenses").getJSONObject(0).getString("description"))
+        assertThrows(IllegalArgumentException::class.java) {
+            server.updateManualExpense(dev.budgettracker.android.domain.Expense(
+                id = "linked-1", description = "Unsafe edit", amount = 100,
+                category = Category.FOOD, date = LocalDate.of(2026, 10, 10)
+            ))
+        }
+        assertEquals(2, server.allExpenses().size)
+        assertEquals(dev.budgettracker.android.domain.ExpenseSource.BILL_PAYMENT,
+            server.allExpenses().first { it.id == "linked-1" }.source)
+    }
+
 }
