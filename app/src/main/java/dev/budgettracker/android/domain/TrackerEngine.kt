@@ -191,6 +191,13 @@ object TrackerEngine {
                 val was=rows(data,kind.records).firstOrNull { it.getString("id")==id }
                 if(command.id!=null)require(was!=null){"Cannot edit a missing record"}
                 val parent=itemData(kind,command.fields,id)
+                if (kind==TrackerKind.BILL && was!=null) {
+                    require(rows(data,"billPayments")
+                        .filter { it.getString("billId")==id }
+                        .all { occurs(parent,month(it.getString("period"))) }) {
+                        "The edited recurrence would invalidate an existing paid period"
+                    }
+                }
                 if(kind!=TrackerKind.BILL && was!=null) {
                     val target=parent.getLong(if(kind==TrackerKind.DEBT)"originalAmount" else "targetAmount")
                     require(target>=paid(data,kind,id)){"Target is lower than recorded payments"}
