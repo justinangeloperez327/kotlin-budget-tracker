@@ -142,4 +142,19 @@ class TrackerEngineTest {
                 TrackerKind.SAVINGS,id,100L,"2026-10-05"))
         }
     }
+
+    @Test fun cannotInvalidateHistoricalBillPeriodsWithFrequencyEdits() {
+        val first=saved(TrackerKind.BILL,newBill())
+        val bill=TrackerEngine.rows(first,"recurringBills").single()
+        val id=bill.getString("id")
+        val afterPayment=TrackerEngine.apply(first,TrackerCommand.Record(
+            TrackerKind.BILL,id,185000,"2026-10-05","2026-10"))
+        assertThrows(IllegalArgumentException::class.java) {
+            TrackerEngine.apply(afterPayment,TrackerCommand.Save(
+                TrackerKind.BILL,newBill().put("frequency","Yearly"),id))
+        }
+        assertEquals("Monthly",
+            TrackerEngine.rows(afterPayment,"recurringBills").single().getString("frequency"))
+    }
+
 }
