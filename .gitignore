@@ -1,10 +1,12 @@
 .gradle/
-build/
-out/
 .idea/
+**/build/
+local.properties
 *.iml
+*.apk
+*.aab
+*.jks
+*.keystore
 .env
 .env.*
 !.env.example
-local.properties
-*.log
