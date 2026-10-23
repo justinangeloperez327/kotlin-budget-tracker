@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import dev.budgettracker.android.domain.BudgetFeatures
 import dev.budgettracker.android.domain.Category
 import dev.budgettracker.android.domain.Expense
 import dev.budgettracker.android.domain.ExpenseSource
@@ -93,4 +94,62 @@ class FinanceDb(context: Context): SQLiteOpenHelper(context, "finance.db", null,
             "Only manually entered expenses can be deleted"
         }
     }
+
+    /** Full ledger for search, all-month filters, and exporting. */
+    fun loadAllExpenses(): List<Expense> {
+        val records = mutableListOf<Expense>()
+        readableDatabase.rawQuery(
+            "SELECT id,description,amount,category,date,source FROM expenses ORDER BY date DESC,id DESC",
+            null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                records.add(Expense(
+                    id = cursor.getString(0), description = cursor.getString(1),
+                    amount = cursor.getLong(2), category = Category.valueOf(cursor.getString(3)),
+                    date = LocalDate.parse(cursor.getString(4)),
+                    source = ExpenseSource.valueOf(cursor.getString(5))
+                ))
+            }
+        }
+        return records
+    }
+
+    /** One atomic local plan update matching the original web budget editor. */
+    fun savePlan(month: YearMonth, budget: Long, allocations: Map<Category, Long>) {
+        BudgetFeatures.plan(month, budget, allocations)
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val budgetValues = ContentValues().apply {
+                put("month", month.toString()); put("amount", budget)
+            }
+            db.insertWithOnConflict("budgets", null, budgetValues, SQLiteDatabase.CONFLICT_REPLACE)
+            db.delete("allocations", "month=?", arrayOf(month.toString()))
+            allocations.filterValues { it > 0 }.forEach { (category, amount) ->
+                val values = ContentValues().apply {
+                    put("month", month.toString())
+                    put("category", category.name)
+                    put("amount", amount)
+                }
+                db.insertOrThrow("allocations", null, values)
+            }
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
+    /** Linked expenses cannot be altered outside the bill/debt/remittance owner. */
+    fun updateManualExpense(expense: Expense) {
+        require(expense.source == ExpenseSource.MANUAL)
+        BudgetFeatures.checkedMinor(expense.amount)
+        val values = ContentValues().apply {
+            put("description", expense.description.trim())
+            put("amount", expense.amount)
+            put("category", expense.category.name)
+            put("date", expense.date.toString())
+        }
+        val changed = writableDatabase.update("expenses", values,
+            "id=? AND source='MANUAL'", arrayOf(expense.id))
+        require(changed == 1) { "Expense not found or managed by another tracker" }
+    }
+
 }
