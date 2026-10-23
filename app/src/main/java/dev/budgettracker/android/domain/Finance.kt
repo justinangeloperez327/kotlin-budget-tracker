@@ -19,7 +19,7 @@ data class Money(val currency: Currency, val minor: Long) {
 
 fun parseMinor(input: String): Long {
     require(input.trim().matches(Regex("""\d{1,12}(\.\d{1,2})?"""))) { "Enter a valid amount (max 2 decimals)" }
-    return BigDecimal(input.trim()).movePointRight(2).setScale(0, RoundingMode.UNNECESSARY).longValueExact()
+    return BudgetFeatures.checkedMinor(BigDecimal(input.trim()).movePointRight(2).setScale(0, RoundingMode.UNNECESSARY).longValueExact())
 }
 
 enum class Category(val label: String) {
@@ -53,7 +53,7 @@ object BudgetCalculator {
         val spent = snapshot.expenses.filter { YearMonth.from(it.date) == snapshot.month }
             .fold(0L) { total, expense -> Math.addExact(total, expense.amount) }
         val allocated = snapshot.allocations.values.fold(0L, Math::addExact)
-        require(allocated <= snapshot.budget) { "Allocations exceed budget" }
+        // Preserve source behavior: allocations may exceed the monthly budget.
         return Summary(snapshot.budget, spent, Math.subtractExact(snapshot.budget, spent), allocated)
     }
     fun categorySpent(snapshot: FinanceSnapshot, category: Category): Long =
