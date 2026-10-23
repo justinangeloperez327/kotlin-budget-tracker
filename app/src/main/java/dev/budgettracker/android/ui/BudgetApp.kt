@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.budgettracker.android.FinanceViewModel
 import dev.budgettracker.android.domain.BudgetCalculator
@@ -52,6 +53,7 @@ fun BudgetApp(model: FinanceViewModel) {
     MaterialTheme(colorScheme = scheme) {
         var page by rememberSaveable { mutableStateOf("Dashboard") }
         var picker by remember { mutableStateOf(false) }
+        var showAccount by remember { mutableStateOf(false) }
         val drawer = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         ModalNavigationDrawer(drawerState = drawer, drawerContent = {
@@ -73,7 +75,10 @@ fun BudgetApp(model: FinanceViewModel) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween) {
                         TextButton(onClick = { scope.launch { drawer.open() } }) { Text("☰ Menu") }
-                        TextButton(onClick = { picker = true }) { Text("Appearance") }
+                        TextButton(onClick = { showAccount = true }) {
+                            Text(if (model.accountConfigured) "Account" else "Sign in")
+                        }
+                        TextButton(onClick = { picker = true }) { Text("Theme") }
                     }
                     Row(Modifier.fillMaxWidth().padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween) {
@@ -84,6 +89,25 @@ fun BudgetApp(model: FinanceViewModel) {
                 }
             }) { inner ->
                 Column(Modifier.padding(inner).fillMaxSize()) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(
+                            if (model.accountConfigured)
+                                (model.accountEmail?.let { "Web account: " + it } ?: "Web account: refresh required")
+                            else "Device-only mode · not synced",
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.weight(1f).padding(top = 11.dp)
+                        )
+                        if (model.accountConfigured) {
+                            TextButton(onClick = model::reload, enabled = !model.loading) { Text("Refresh") }
+                        }
+                    }
+                    if (model.syncBlocked) {
+                        Text("Server changes may exist. Refresh before editing; no automatic retry.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(horizontal = 16.dp))
+                    }
                     if (model.error != null) {
                         Card(Modifier.fillMaxWidth().padding(10.dp)) {
                             Row(Modifier.padding(10.dp)) {
@@ -103,6 +127,7 @@ fun BudgetApp(model: FinanceViewModel) {
             }
         }
         if (picker) ThemePicker(model) { picker = false }
+        if (showAccount) AccountDialog(model) { showAccount = false }
     }
 }
 
@@ -280,5 +305,80 @@ private fun ThemePicker(model:FinanceViewModel,onClose:()->Unit) {
             }
         },
         confirmButton={TextButton(onClick=onClose){Text("Done")}}
+    )
+}
+
+
+@Composable
+private fun AccountDialog(model: FinanceViewModel, onClose: () -> Unit) {
+    var registration by remember { mutableStateOf(false) }
+    var url by remember { mutableStateOf(model.serverOrigin) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+
+    LaunchedEffect(model.accountEmail) {
+        if (model.accountEmail != null) {
+            password = ""
+            onClose()
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text(if (model.accountConfigured) "Web account" else
+            if (registration) "Register account" else "Sign in to web account") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (model.accountConfigured) {
+                    Text(model.accountEmail ?: "Session saved; refresh needed",
+                        style = MaterialTheme.typography.titleSmall)
+                    Text("Edits use the existing Next.js PostgreSQL account. The device-only records stay separate.")
+                    if (model.syncBlocked) {
+                        Text("Sync is unavailable. Refresh before saving.",
+                            color = MaterialTheme.colorScheme.error)
+                    }
+                    Button(onClick = { model.reload() }, enabled = !model.loading) {
+                        Text("Refresh account")
+                    }
+                    TextButton(onClick = { model.signOut(); onClose() }, enabled = !model.loading) {
+                        Text("Sign out from this device")
+                    }
+                } else {
+                    Text("Sign in using the account from next-budget-tracker. Enter the HTTPS origin where its mobile API is hosted.",
+                        style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(value = url, onValueChange = { url = it },
+                        label = { Text("Server URL (https://...)") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = email, onValueChange = { email = it },
+                        label = { Text("Email") }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        modifier = Modifier.fillMaxWidth())
+                    if (registration) OutlinedTextField(value = name, onValueChange = { name = it },
+                        label = { Text("Name") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = password, onValueChange = { password = it },
+                        label = { Text("Password") }, singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        modifier = Modifier.fillMaxWidth())
+                    Button(
+                        onClick = { model.signIn(url, email, password, registration, name) },
+                        enabled = !model.loading && email.isNotBlank() && password.isNotBlank() &&
+                            url.isNotBlank() && (!registration || name.isNotBlank()),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(if (registration) "Create account" else "Sign in") }
+                    TextButton(onClick = { registration = !registration }) {
+                        Text(if (registration) "Already registered? Sign in" else "New account? Register")
+                    }
+                    Text("Device-only budgets and expenses are not uploaded automatically. Signing in switches to your server workspace.",
+                        style = MaterialTheme.typography.bodySmall)
+                    if (model.error != null) Text(model.error ?: "",
+                        color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onClose) { Text("Close") } }
     )
 }
