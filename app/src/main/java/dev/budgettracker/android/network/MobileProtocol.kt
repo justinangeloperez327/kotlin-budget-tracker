@@ -48,7 +48,7 @@ data class ServerSnapshot(
                 amount = entry.getLong("amount"),
                 category = Category.entries.first { it.label == entry.getString("category") },
                 date = LocalDate.parse(entry.getString("date")),
-                source = if (isLinkedExpense(id)) ExpenseSource.BILL_PAYMENT else ExpenseSource.MANUAL
+                source = expenseSource(id)
             ))
         }
         return FinanceSnapshot(month, budget, allocations, expenses.sortedByDescending { it.date })
@@ -66,7 +66,7 @@ data class ServerSnapshot(
                     amount = e.getLong("amount"),
                     category = Category.entries.first { it.label == e.getString("category") },
                     date = LocalDate.parse(e.getString("date")),
-                    source = if (isLinkedExpense(id)) ExpenseSource.BILL_PAYMENT else ExpenseSource.MANUAL
+                    source = expenseSource(id)
                 ))
             }
         }.sortedWith(compareByDescending<Expense> { it.date }.thenByDescending { it.id })
@@ -108,6 +108,13 @@ data class ServerSnapshot(
         }
         require(updated) { "Manual expense does not exist" }
         return next
+    }
+
+    fun expenseSource(id: String): ExpenseSource = when {
+        linkedIn("billPayments", id) -> ExpenseSource.BILL_PAYMENT
+        linkedIn("debtPayments", id) -> ExpenseSource.DEBT_PAYMENT
+        linkedIn("remittances", id) -> ExpenseSource.REMITTANCE
+        else -> ExpenseSource.MANUAL
     }
 
     private fun linkedIn(arrayName: String, id: String): Boolean {
