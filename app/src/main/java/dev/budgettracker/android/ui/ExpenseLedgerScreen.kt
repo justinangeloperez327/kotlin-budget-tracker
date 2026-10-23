@@ -28,6 +28,7 @@ fun ExpenseLedgerScreen(model: FinanceViewModel) {
     var showEditor by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<Expense?>(null) }
     var exportError by remember { mutableStateOf<String?>(null) }
+    var pendingCsv by remember { mutableStateOf<String?>(null) }
     val month = monthText.takeIf { it.isNotBlank() }?.let {
         runCatching { YearMonth.parse(it.trim()) }.getOrNull()
     }
@@ -40,9 +41,10 @@ fun ExpenseLedgerScreen(model: FinanceViewModel) {
                 val stream = requireNotNull(context.contentResolver.openOutputStream(uri)) {
                     "The selected file cannot be written"
                 }
-                stream.use { it.write(ExpenseCsv.render(filtered).toByteArray(Charsets.UTF_8)) }
+                stream.use { it.write(requireNotNull(pendingCsv).toByteArray(Charsets.UTF_8)) }
                 exportError = null
             } catch (e: Exception) { exportError = e.message ?: "Export failed" }
+            finally { pendingCsv = null }
         }
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -54,7 +56,11 @@ fun ExpenseLedgerScreen(model: FinanceViewModel) {
                 enabled = !model.loading && !model.syncBlocked, modifier = Modifier.weight(1f)) {
                 Text("Add expense")
             }
-            OutlinedButton(onClick = { export.launch("expenses.csv") },
+            OutlinedButton(onClick = {
+                // Freeze filtered rows before Android launches the document picker.
+                pendingCsv = ExpenseCsv.render(filtered)
+                export.launch("expenses.csv")
+            },
                 enabled = validMonth && filtered.isNotEmpty(), modifier = Modifier.weight(1f)) {
                 Text("Export CSV")
             }
