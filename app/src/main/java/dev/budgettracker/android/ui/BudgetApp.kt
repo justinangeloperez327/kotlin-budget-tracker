@@ -244,9 +244,8 @@ private fun Expenses(model: FinanceViewModel) {
         OutlinedTextField(date,{date=it},label={Text("Date (YYYY-MM-DD)")},
             singleLine=true,modifier=Modifier.fillMaxWidth())
         Button(onClick={
+            // Preserve the draft if a remote request is rejected or its outcome is uncertain.
             model.addExpense(description,amount,Category.valueOf(category),date)
-            description=""
-            amount=""
         },enabled=!model.loading && description.isNotBlank() && amount.isNotBlank(),
             modifier=Modifier.fillMaxWidth().padding(vertical=12.dp)){Text("Save expense")}
         HorizontalDivider()
@@ -317,8 +316,9 @@ private fun AccountDialog(model: FinanceViewModel, onClose: () -> Unit) {
     var password by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
 
+    val alreadySignedInWhenOpened = remember { model.accountConfigured }
     LaunchedEffect(model.accountEmail) {
-        if (model.accountEmail != null) {
+        if (!alreadySignedInWhenOpened && model.accountEmail != null) {
             password = ""
             onClose()
         }

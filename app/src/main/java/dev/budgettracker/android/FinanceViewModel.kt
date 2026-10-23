@@ -191,6 +191,8 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
         accountConfigured = false
         syncBlocked = false
         serverOrigin = ""
+        // Never display a previous account's finance data after logout/session expiry.
+        data = FinanceSnapshot(month)
     }
 
     private fun write(local: () -> Unit, mobile: (ServerSnapshot) -> JSONObject) {
