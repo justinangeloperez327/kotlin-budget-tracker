@@ -5,6 +5,9 @@ on:
   pull_request:
 permissions:
   contents: read
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -68,7 +71,11 @@ jobs:
             -no-window -no-audio -no-boot-anim -no-snapshot \
             -gpu swiftshader_indirect -memory 2048 \
             > "$RUNNER_TEMP/group7-emulator.log" 2>&1 &
-          "$ANDROID_HOME/platform-tools/adb" wait-for-device
+          if ! timeout 180s "$ANDROID_HOME/platform-tools/adb" wait-for-device; then
+            echo "::error::ADB did not detect the launched emulator"
+            tail -100 "$RUNNER_TEMP/group7-emulator.log"
+            exit 1
+          fi
           booted=0
           for attempt in $(seq 1 180); do
             if [ "$("$ANDROID_HOME/platform-tools/adb" shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; then
