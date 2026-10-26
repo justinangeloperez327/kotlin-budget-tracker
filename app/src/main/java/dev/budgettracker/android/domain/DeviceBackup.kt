@@ -20,7 +20,16 @@ object DeviceBackup {
         .digest(content.toByteArray(StandardCharsets.UTF_8))
         .joinToString(""){b->"%02x".format(b.toInt() and 0xff)}
 
+    /** A version 1 import must not silently discard future or omitted modules. */
+    private fun complete(snapshot:JSONObject) {
+        val allowed=(WorkspaceAudit.arrays + listOf("budgets","categoryBudgets")).toSet()
+        val actual=snapshot.keys().asSequence().toSet()
+        require(actual==allowed) {
+            "Backup modules are incomplete or from a different app version"
+        }
+    }
     fun encode(snapshot: JSONObject, createdAt: LocalDate=LocalDate.now()):String {
+        complete(snapshot)
         val result=WorkspaceAudit.inspect(snapshot)
         require(result.passed) { "Cannot back up records with unresolved integrity issues" }
         val bytes=snapshot.toString()
@@ -55,6 +64,7 @@ object DeviceBackup {
                 digest(payload).toByteArray(StandardCharsets.UTF_8)
             )){"Backup checksum mismatch: the file may be damaged"}
         val data=JSONObject(payload)
+        complete(data)
         // No auto-merge and no accepting a partial workspace as a full backup.
         require(data.has("budgets") && data.has("categoryBudgets") && data.has("expenses")){
             "Backup is missing required finance modules"
