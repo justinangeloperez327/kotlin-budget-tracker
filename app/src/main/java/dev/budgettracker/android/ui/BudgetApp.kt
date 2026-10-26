@@ -186,51 +186,36 @@ private fun Stat(label: String, amount: String, explanation: String) {
 
 @Composable
 private fun Dashboard(model: FinanceViewModel) {
-    val s = BudgetCalculator.summarize(model.data)
+    val today = LocalDate.now()
+    val snapshot = remember(model.trackerData,model.month,today) {
+        dev.budgettracker.android.domain.FinancialAnalytics.overview(
+            model.trackerData,model.month,today)
+    }
+    val s = snapshot.month
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         MonthBar(model)
         Text("Your monthly financial picture", style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(vertical = 12.dp))
-        Stat("Monthly budget", aed(s.budget), "AED spending plan")
-        Stat("Total spent", aed(s.spent), model.data.expenses.size.toString() + " expenses recorded")
-        Stat("Remaining", variance(s.variance), "Budget minus actual")
-        val modules = model.trackerData
-        val bills = dev.budgettracker.android.domain.TrackerEngine.rows(modules,"recurringBills")
-        val payments = dev.budgettracker.android.domain.TrackerEngine.rows(modules,"billPayments")
-        val period = java.time.YearMonth.now()
-        val due = bills.filter { bill ->
-            dev.budgettracker.android.domain.TrackerEngine.occurs(bill,period) &&
-                bill.optBoolean("active") &&
-                payments.none { p -> p.getString("billId")==bill.getString("id") &&
-                    p.getString("period")==period.toString() }
-        }.fold(0L) { sum,bill -> Math.addExact(sum,bill.getLong("amount")) }
-        val debtBalance = dev.budgettracker.android.domain.TrackerEngine.rows(modules,"debts")
-            .fold(0L) { sum,debt ->
-                Math.addExact(sum,dev.budgettracker.android.domain.TrackerEngine.remaining(
-                    modules,dev.budgettracker.android.domain.TrackerKind.DEBT,debt.getString("id")))
-            }
-        val savingsBalance = dev.budgettracker.android.domain.TrackerEngine.rows(modules,"savingsDeposits")
-            .fold(0L) { sum,deposit -> Math.addExact(sum,deposit.getLong("amount")) }
-        Stat("Outstanding scheduled bills", aed(due), "Unpaid bills for the current month")
-        Stat("Remaining debt", aed(debtBalance), "Loan balances after recorded repayments")
-        Stat("Savings deposits", aed(savingsBalance), "Recorded transfers, not consumption expenses")
-        val philippines = dev.budgettracker.android.domain.PhilippineEngine
-        val year = java.time.LocalDate.now().year.toString()
-        val ytdGovernment = philippines.rows(modules,"governmentContributions")
-            .filter { it.getString("status")=="Paid" && it.getString("period").startsWith(year) }
-            .fold(0L){ total,row -> Math.addExact(total,row.getLong("amount")) }
-        val mp2Total = philippines.rows(modules,"mp2Deposits")
-            .fold(0L){ total,row -> Math.addExact(total,row.getLong("amount")) }
-        val phpRemitted = philippines.rows(modules,"remittances")
-            .filter { it.getString("status")=="Completed" && it.getString("transferDate").startsWith(year) }
-            .fold(0L){ total,row -> Math.addExact(total,row.optLong("receivedAmount",0)) }
+        Text("Recorded activity as of "+s.asOf,style=MaterialTheme.typography.bodySmall)
+        Stat("Monthly budget",aed(s.budget),"AED spending plan")
+        Stat("Total spent",aed(s.spent),"Recorded AED expenses through the reporting cutoff")
+        Stat("Remaining",variance(s.variance),"Budget minus actual; not deposited savings")
+        Stat("Outstanding scheduled bills",aed(snapshot.billsOutstanding),
+            snapshot.overdueBills.toString()+" overdue in the selected period")
+        Stat("Remaining debt",aed(snapshot.debtRemaining),
+            snapshot.overdueDebts.toString()+" overdue debts as of "+s.asOf)
+        Stat("Savings deposits",aed(snapshot.savingsBalance),"Recorded AED transfers, not consumption")
+        Stat("Remittance principal sent",aed(s.remitted),"Completed AED transfers in selected month")
+        Stat("Remittance fees",aed(s.remittanceFees),"Transfer fees recorded in selected month")
         Text("Philippine finances · PHP",style=MaterialTheme.typography.titleLarge,
             modifier=Modifier.padding(top=20.dp,bottom=8.dp))
-        Stat("Government paid YTD", php(ytdGovernment), "SSS, PhilHealth and Pag-IBIG paid records")
-        Stat("MP2 recorded savings", php(mp2Total), "Savings deposits, not AED consumption")
-        Stat("PHP remittances received YTD", php(phpRemitted), "Completed transfers only")
-        Text("AED and PHP amounts are shown in separate currencies and never added together.",
-            style=MaterialTheme.typography.bodySmall, modifier=Modifier.padding(top=10.dp))
+        Stat("Government paid YTD",php(snapshot.governmentYtdPaid),
+            "SSS, PhilHealth and Pag-IBIG records through "+s.asOf)
+        Stat("MP2 recorded savings",php(snapshot.mp2TotalSaved),
+            "PHP deposits through reporting cutoff")
+        Stat("PHP received this month",php(s.remittanceReceived),"Completed remittances only")
+        Text("AED and PHP amounts are separate and never added together.",
+            style=MaterialTheme.typography.bodySmall,modifier=Modifier.padding(top=10.dp))
     }
 }
 
