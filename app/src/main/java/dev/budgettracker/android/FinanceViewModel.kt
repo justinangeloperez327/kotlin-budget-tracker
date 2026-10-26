@@ -283,6 +283,42 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
         }
     }
 
+    var backupStatus by mutableStateOf<String?>(null); private set
+    fun dismissBackupStatus() { backupStatus = null }
+
+    /**
+     * Restore is allowed ONLY in device-only mode and only after the UI has
+     * displayed the backup preview and obtained explicit replacement consent.
+     */
+    fun restoreDeviceBackup(snapshot: JSONObject) {
+        if(loading || mobileSession!=null || accountConfigured) {
+            error="Sign out and wait for local mode before restoring a device backup."
+            return
+        }
+        viewModelScope.launch {
+            loading=true
+            try {
+                val (local,ledger,modules)=withContext(Dispatchers.IO) {
+                    db.restoreDeviceSnapshot(JSONObject(snapshot.toString()))
+                    Triple(db.load(month),db.loadAllExpenses(),db.loadTrackerData())
+                }
+                if(mobileSession==null) {
+                    data=local
+                    allExpenses=ledger
+                    trackerData=modules
+                    error=null
+                    backupStatus="Local financial data restored successfully."
+                    savedMutationSequence++
+                }
+            } catch(ex:Exception) {
+                error="Restore rejected; your existing device records were not replaced. "+
+                    (ex.message ?: "Unknown restore error")
+            } finally {
+                loading=false
+            }
+        }
+    }
+
     fun philippineMutation(command: PhilippineCommand) = write(
         local = { db.applyPhilippineCommand(command) },
         mobile = { PhilippineEngine.apply(it.fullData,command) }
