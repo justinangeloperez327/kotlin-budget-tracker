@@ -102,7 +102,7 @@ fun BudgetApp(model: FinanceViewModel) {
                         }
                         Text(page,style=MaterialTheme.typography.titleLarge,
                             maxLines=2,modifier=Modifier.weight(1f).semantics { heading() })
-                        if (model.loading) CircularProgressIndicator(Modifier.size(22.dp))
+                        if (model.loading) CircularProgressIndicator(Modifier.size(22.dp).testTag("finance:loading"))
                     }
                     HorizontalDivider()
                 }
