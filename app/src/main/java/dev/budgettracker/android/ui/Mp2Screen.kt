@@ -86,7 +86,7 @@ fun Mp2Screen(model:FinanceViewModel) {
                             val period=String.format(java.util.Locale.US,"%04d-%02d",year,month)
                             val matches=own.filter{it.getString("paymentDate").startsWith(period)}
                             val sum=matches.fold(0L){s,r->Math.addExact(s,r.getLong("amount"))}
-                            if(matches.isNotEmpty())Text(period+" · "+php(sum)+" · "+matches.size+" deposits",
+                            Text(period+" · "+php(sum)+" · "+matches.size+" deposits",
                                 style=MaterialTheme.typography.bodySmall)
                         }
                         own.filter{it.getString("paymentDate").startsWith(year.toString())}
