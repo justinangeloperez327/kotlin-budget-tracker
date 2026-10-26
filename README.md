@@ -2,11 +2,11 @@
 
 This is the **native Android Kotlin/Jetpack Compose port** of [next-budget-tracker](https://github.com/justinangeloperez327/next-budget-tracker), **not a Ktor website**.
 
-## Current state: Group 5 — remittances and Philippine finance
+## Current state: Group 6 — Financial Overview, Reports, History and Reminders
 
 Android Studio project (Kotlin 2.2.21, Android Gradle Plugin 8.13.2, Gradle 8.13, Jetpack Compose BOM 2025.10.01 / Material 3, SDK 36, minimum API 26). Includes a responsive native navigation drawer, Sakura-inspired finance UI, complete monthly budget plan editor, category charts, device-only or web-account expense add/edit/delete, global search/category/month filters, safe CSV document export, character palettes and appearance modes, unit tests, Android instrumentation test sources and GitHub Actions CI.
 
-**Not yet an exact functional copy.** Online authentication and revision-aware synchronization are implemented but require the updated backend to be deployed manually. Bills, debt and savings now have native trackers with history. Remittances, SSS, PhilHealth, Pag-IBIG and MP2 now have native screens; consolidated reports, reminders and companion artwork are not yet fully implemented. The app labels incomplete sections rather than fabricating records. [See the complete parity checklist](docs/PARITY_CHECKLIST.md).
+**Not yet an exact functional copy.** Online authentication and revision-aware synchronization are implemented but require the updated backend to be deployed manually. Bills, debt and savings now have native trackers with history. Remittances, SSS, PhilHealth, Pag-IBIG and MP2 have native screens. Financial Overview, Reports, History and in-app Reminders are now implemented; character artwork, offline write queuing and running emulator/UI instrumentation still need work. The app labels incomplete sections rather than fabricating records. [See the complete parity checklist](docs/PARITY_CHECKLIST.md).
 
 ## Run in Android Studio
 
@@ -72,3 +72,15 @@ No automatic deployment, Play Store publication or pull requests.
 - JVM regression tests and Android database instrumentation test sources cover money separation, expense links, PHP contributions, MP2 maturity and cross-module preservation. CI compiles instrumentation tests but does not run an emulator.
 
 Financial records entered in this app are not official confirmation of government contributions or bank transactions. MP2 maturity is an estimated date, not a guaranteed dividend/withdrawal event. No automated Play Store or Vercel deployment is enabled.
+
+## Group 6 — Financial Overview, Reports, History and Reminders
+
+- Financial overview separates AED budget, bills, debt, savings, remittances and fees from PHP government contributions, MP2 and received remittances. All period-sensitive figures use **as-of date = earlier of today or the selected month end**; future-dated payments are excluded from completed totals.
+- Monthly reports include budget versus actual, under/over variance, category spending, paid bills, repaid debt, AED savings transfers, completed/pending remittances, fees, family support and own-account transfers. PHP rows include paid contributions, MP2 deposits and received remittances.
+- Yearly history: only elapsed months through today, with AED budget/spending/variance, gross unspent and overspent months, category rollups and native month-by-month trend bars. Money is represented as integer minor units and currencies are never combined.
+- Export monthly and yearly CSV using Android's system document picker, without storage permissions. CSV headers explicitly identify AED or PHP; results contain UTF-8 BOM, fixed two-decimal amounts and CRLF rows.
+- In-app Reminders: outstanding bills, debt due dates, explicitly missed or pending SSS/PhilHealth/Pag-IBIG contributions, expected-period gaps (not automatically marked missed), savings/MP2 targets and estimated MP2 maturity, pending remittances. Reminders have severity filters and links to the relevant native screen. They do not schedule OS notifications or issue financial transactions.
+- Device-only reporting reads complete historical SQLite budgets, allocations and expenses plus tracker records in memory. No schema migration or write is needed. Web-account reporting uses the authenticated revision-safe workspace snapshot without modification.
+- Kotlin unit regression tests exercise cutoffs, source-shaped data, double-count protection, AED/PHP separation, CSV exports, reminder priority and category/year performance. Android instrumentation tests cover local historical SQLite projections, but CI only **compiles**, not executes, emulator instrumentation.
+
+Missing or incomplete: device/emulator UI validation, notification scheduling, more advanced customizable visualizations, offline queue/automatic local-account merge, complete character artwork and full end-to-end parity audit. The original web account API must be deployed manually before remote login works.

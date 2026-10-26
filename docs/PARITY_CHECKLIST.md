@@ -7,8 +7,8 @@ The goal is a feature-complete Kotlin/Jetpack Compose Android adaptation preserv
 | Feature from Next.js | Android migration state |
 | --- | --- |
 | Login/register/logout/account/session | Implemented via HTTPS mobile API, Android Keystore token storage, manual backend deployment needed |
-| Dashboard summary | Partial (local budgets and expenses only) |
-| Financial overview separated AED/PHP | Not implemented |
+| Dashboard summary | Groups 3–6: actual AED expenses/budgets, linked payment totals and separately reported PHP contributions, MP2 and remittances |
+| Financial overview separated AED/PHP | Group 6: period cutoff-aware AED commitments and PHP government/MP2/remittance summaries; balances and attention |
 | Monthly and category budgets | Group 3: whole-plan atomic save, monthly report, category variance charts in device-only and web-account modes |
 | Expense CRUD, filters, CSV | Group 3: add/edit/delete, cross-month search and filters, filtered CSV export, managed linked-expense protection |
 | Bills recurring and linked payment expense | Group 4: native recurring bill create/edit, schedule, payment/history/undo and atomic linked AED expenses |
@@ -17,8 +17,8 @@ The goal is a feature-complete Kotlin/Jetpack Compose Android adaptation preserv
 | Remittances AED sent, fee, PHP received, rate | Group 5: native AED/PHP remittances, fees, effective rates, linked expenses and history |
 | SSS/PhilHealth/Pag-IBIG and history | Group 5: provider accounts, statuses, year history and explicit missed records |
 | MP2 savings, maturity, history | Group 5: multiple PHP accounts, deposits, maturity and history |
-| Reports, CSV, historical analysis | Not implemented |
-| In-app reminders | Not implemented |
+| Reports, CSV, historical analysis | Group 6: monthly/yearly report pages, category history and budget trend bars, system document-picker CSV export |
+| In-app reminders | Group 6: derived bills/debt/savings/contribution/MP2/remittance reminders with severity and tracker navigation; no OS notifications |
 | Sakura, Kuromi, Keroppi, Vegeta, Naruto, Kakashi, Sasuke, Ichigo | Native palette selector; illustrations pending |
 | Light/Dark/System | Native toggle |
 | Workspace save revisions and recovery | Server 409 conflict detection + explicit refresh after uncertain saves; offline queued writes not implemented |
@@ -69,3 +69,13 @@ No automatic deployment, Play Store publishing or destructive migration.
 - MP2: multiple accounts, dividend option, monthly PHP savings target, deposits, estimated five-year maturity and year history.
 - Device mode persists full Group 4 and Group 5 module arrays in the private SQLite tracker-state row; expense-linked remittance writes are atomic. Web mode preserves authenticated revision-checked whole-workspace saves.
 - Remaining: consolidated overview, deep historical reports and exports, reminders, complete companion artwork, automated migration, offline write queue and executed emulator UI tests.
+
+## Group 6 — Financial Overview, Reports and Reminders
+
+- Reports are read-only, derived from the canonical workspace or the full local SQLite projection. No automatic API saves or transfers result from reading reports. All dated transactions are bounded by the earlier of today and the selected month's last day.
+- AED and PHP metrics remain in separate lanes. A transfer to an own account is not treated as consumption; bills/debt payment expense links are already counted in `expenses` and are not added to spending twice. Unspent budget is not a bank deposit.
+- Year history only considers elapsed months, shows under/over budget by category and month, and supports monthly/yearly CSV exports through Android's Storage Access Framework without external-storage permissions.
+- In-app reminders derive due and pending statuses from existing records, include links to the corresponding trackers, and never silently mark an unrecorded contribution as missed. They do not generate OS alarms or recurring background notifications.
+- Test fixtures cover historical and future transactions, AED/PHP isolation, CSV, reminder priorities and expected contribution periods. Instrumentation tests compile in CI; emulator execution remains outstanding.
+
+Remaining scope: native device UI validation, accessibility refinements, robust offline import/merge, backfill/reconciliation audit, artwork, notification scheduling if desired, and final end-to-end parity review.
