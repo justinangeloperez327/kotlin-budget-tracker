@@ -14,6 +14,7 @@ import dev.budgettracker.android.domain.TrackerEngine
 import dev.budgettracker.android.domain.TrackerKind
 import dev.budgettracker.android.domain.PhilippineEngine
 import dev.budgettracker.android.domain.PhilippineCommand
+import dev.budgettracker.android.domain.WorkspaceAudit
 import org.json.JSONObject
 import java.time.LocalDate
 import java.time.YearMonth
@@ -179,6 +180,9 @@ class FinanceDb(context: Context, databaseName: String = "finance.db"): SQLiteOp
                 .put("date",item.date.toString()))
         }
         saved.put("expenses",items)
+        (TrackerEngine.keys + PhilippineEngine.keys).forEach { key ->
+            if(!saved.has(key))saved.put(key,org.json.JSONArray())
+        }
         // Group 6 reports need complete historical budgets, not just the selected month.
         // This is a read-only projection; SQLite schema and existing records are unchanged.
         val budgets = JSONObject()
@@ -320,5 +324,78 @@ class FinanceDb(context: Context, databaseName: String = "finance.db"): SQLiteOp
             sql.endTransaction()
         }
     }
+
+    /** Explicit, all-or-nothing restore of a complete validated DEVICE-ONLY backup.
+     * No web account data is ever read from or written to this database.
+     */
+    fun restoreDeviceSnapshot(snapshot:JSONObject) {
+        val audit=WorkspaceAudit.inspect(snapshot)
+        require(audit.passed) { "Invalid backup: "+audit.issues.first().detail }
+        val sql=writableDatabase
+        sql.beginTransaction()
+        try {
+            // Deletion is safe only inside this transaction; any constraint failure rolls back all.
+            sql.delete("tracker_state",null,null)
+            sql.delete("expenses",null,null)
+            sql.delete("allocations",null,null)
+            sql.delete("budgets",null,null)
+
+            val budgets=snapshot.getJSONObject("budgets")
+            budgets.keys().forEach { month ->
+                val values=ContentValues().apply {
+                    put("month",month);put("amount",budgets.getLong(month))
+                }
+                sql.insertOrThrow("budgets",null,values)
+            }
+            val allocations=snapshot.getJSONObject("categoryBudgets")
+            allocations.keys().forEach { month ->
+                val fields=allocations.getJSONObject(month)
+                fields.keys().forEach { label ->
+                    val category=Category.entries.first { it.label==label }
+                    val values=ContentValues().apply {
+                        put("month",month);put("category",category.name)
+                        put("amount",fields.getLong(label))
+                    }
+                    sql.insertOrThrow("allocations",null,values)
+                }
+            }
+            val links=linkedMapOf<String,ExpenseSource>()
+            listOf(
+                "billPayments" to ExpenseSource.BILL_PAYMENT,
+                "debtPayments" to ExpenseSource.DEBT_PAYMENT,
+                "remittances" to ExpenseSource.REMITTANCE
+            ).forEach { (kind,source) ->
+                WorkspaceAuditRows(snapshot,kind).forEach { row ->
+                    row.optString("expenseId").takeIf { it.isNotBlank() }?.let { id ->
+                        require(links.put(id,source)==null) { "Backup has duplicate managed expense owners" }
+                    }
+                }
+            }
+            WorkspaceAuditRows(snapshot,"expenses").forEach { row ->
+                val id=row.getString("id")
+                val category=Category.entries.first { it.label==row.getString("category") }
+                val values=ContentValues().apply {
+                    put("id",id);put("description",row.getString("description"))
+                    put("amount",row.getLong("amount"));put("category",category.name)
+                    put("date",row.getString("date"))
+                    put("source",(links[id] ?: ExpenseSource.MANUAL).name)
+                }
+                sql.insertOrThrow("expenses",null,values)
+            }
+            val stored=JSONObject()
+            (TrackerEngine.keys+PhilippineEngine.keys).forEach { key ->
+                stored.put(key,org.json.JSONArray(snapshot.optJSONArray(key)?.toString() ?: "[]"))
+            }
+            sql.insertOrThrow("tracker_state",null,ContentValues().apply {
+                put("id",1);put("data",stored.toString())
+            })
+            sql.setTransactionSuccessful()
+        } finally {
+            sql.endTransaction()
+        }
+    }
+
+    private fun WorkspaceAuditRows(data:JSONObject,key:String):List<JSONObject> =
+        TrackerEngine.rows(data,key)
 
 }
