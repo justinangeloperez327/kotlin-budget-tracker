@@ -119,6 +119,9 @@ fun BudgetApp(model: FinanceViewModel) {
                     }
                     when(page) {
                         "Dashboard" -> Dashboard(model)
+                        "Financial overview" -> FinancialOverviewScreen(model) { page = it }
+                        "Reports" -> FinancialReportsScreen(model)
+                        "Reminders" -> FinancialRemindersScreen(model) { page = it }
                         "Budget vs. actual" -> BudgetPlanScreen(model)
                         "Expense tracker" -> ExpenseLedgerScreen(model)
                         "Bills & recurring" -> TrackerScreen(model, dev.budgettracker.android.domain.TrackerKind.BILL)
