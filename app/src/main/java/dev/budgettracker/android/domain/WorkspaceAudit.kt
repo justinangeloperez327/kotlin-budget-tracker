@@ -39,6 +39,18 @@ object WorkspaceAudit {
             }
         }
         fun rows(key:String)=tables[key].orEmpty()
+        fun requiredText(record:JSONObject,key:String,cap:Int){
+            val text=record.optString(key)
+            if(text.trim().isEmpty() || text.length>cap)
+                fail("text",key+" is missing or exceeds the permitted length")
+        }
+        fun optionalText(record:JSONObject,key:String,cap:Int) {
+            if(record.has(key))requiredText(record,key,cap)
+        }
+        fun active(record:JSONObject){
+            if(record.opt("active") !is Boolean)
+                fail("active","Account/record active flag is missing or invalid")
+        }
         val index=linkedMapOf<String,Map<String,JSONObject>>()
         tables.forEach { (table,all) ->
             val map=linkedMapOf<String,JSONObject>()
@@ -56,6 +68,9 @@ object WorkspaceAudit {
                 fail("money",field+" is not a valid minor-unit amount");return null
             }
             return value
+        }
+        fun optionalTarget(record:JSONObject){
+            if(record.has("monthlyTarget"))checkMoney(record,"monthlyTarget",true)
         }
         fun parent(table:String,key:String,row:JSONObject):JSONObject? =
             index[table]?.get(row.optString(key)).also {
@@ -99,9 +114,15 @@ object WorkspaceAudit {
                 fail("expense-mismatch","Payment and linked expense amount, category or date differ")
         }
         rows("recurringBills").forEach {
+            requiredText(it,"name",100);active(it);optionalText(it,"notes",500)
+            if(Category.entries.none { category->category.label==it.optString("category") })
+                fail("category","Bill has invalid category")
             checkMoney(it,"amount")
             if(!month(it.optString("startMonth")))fail("month","Invalid bill start month")
             if(it.has("endMonth")&&!month(it.optString("endMonth")))fail("month","Invalid bill end month")
+            if(it.has("endMonth")&&month(it.optString("endMonth"))&&
+                it.optString("endMonth")<it.optString("startMonth"))
+                fail("month","Bill ends before it starts")
             if(it.optString("frequency") !in listOf("Monthly","Quarterly","Yearly") ||
                it.optInt("dueDay") !in 1..31)fail("recurrence","Invalid bill schedule")
         }
@@ -110,6 +131,7 @@ object WorkspaceAudit {
             val bill=parent("recurringBills","billId",p)
             val period=p.optString("period")
             if(!month(period)||!date(p.optString("paymentDate")))fail("date","Invalid bill payment date/period")
+            optionalText(p,"referenceNumber",80);optionalText(p,"notes",500)
             if(!paidPeriods.add(p.optString("billId")+":"+period))
                 fail("duplicate-payment","Bill period was paid more than once")
             if(bill!=null) {
@@ -120,11 +142,22 @@ object WorkspaceAudit {
             }
         }
         val debtPaid=mutableMapOf<String,Long>()
-        rows("debts").forEach { checkMoney(it,"originalAmount") }
+        rows("debts").forEach {
+            requiredText(it,"name",120);requiredText(it,"lender",120);active(it)
+            optionalText(it,"notes",500);optionalTarget(it)
+            checkMoney(it,"originalAmount")
+            if(Category.entries.none { category->category.label==it.optString("category") })
+                fail("category","Debt has invalid category")
+            if(!date(it.optString("startDate")))fail("date","Debt has invalid start date")
+            if(it.has("dueDate") && (!date(it.optString("dueDate")) ||
+                it.optString("dueDate")<it.optString("startDate")))
+                fail("date","Debt due date is invalid")
+        }
         rows("debtPayments").forEach { p ->
             val d=parent("debts","debtId",p)
             val amount=checkMoney(p,"amount")
             if(!date(p.optString("paymentDate")))fail("date","Invalid debt payment date")
+            optionalText(p,"referenceNumber",80);optionalText(p,"notes",500)
             if(d!=null) {
                 link(p.optString("expenseId"),amount,d.optString("category"),p.optString("paymentDate"))
                 if(amount!=null)debtPaid[p.optString("debtId")]=
@@ -136,11 +169,20 @@ object WorkspaceAudit {
                 fail("overpaid","Debt repayment exceeds original balance")
         }
         val savingsPaid=mutableMapOf<String,Long>()
-        rows("savingsGoals").forEach { checkMoney(it,"targetAmount") }
+        rows("savingsGoals").forEach {
+            requiredText(it,"name",120);active(it);optionalText(it,"destination",120)
+            optionalText(it,"notes",500);optionalTarget(it)
+            checkMoney(it,"targetAmount")
+            if(!date(it.optString("startDate")))fail("date","Savings goal start date invalid")
+            if(it.has("targetDate") && (!date(it.optString("targetDate")) ||
+                it.optString("targetDate")<it.optString("startDate")))
+                fail("date","Savings goal target date invalid")
+        }
         rows("savingsDeposits").forEach { p ->
             parent("savingsGoals","goalId",p)
             val amount=checkMoney(p,"amount")
             if(!date(p.optString("depositDate")))fail("date","Invalid savings date")
+            optionalText(p,"referenceNumber",80);optionalText(p,"notes",500)
             if(amount!=null)savingsPaid[p.optString("goalId")]=
                 Math.addExact(savingsPaid[p.optString("goalId")]?:0L,amount)
         }
@@ -150,6 +192,11 @@ object WorkspaceAudit {
         }
         val providers=mutableSetOf<String>()
         rows("governmentAccounts").forEach { a ->
+            active(a);optionalText(a,"accountIdentifier",40);optionalTarget(a)
+            if(a.optString("frequency") !in listOf("Monthly","Quarterly"))
+                fail("frequency","Government contribution frequency invalid")
+            if(a.optString("memberType") !in PhilippineEngine.memberTypes[a.optString("provider")].orEmpty())
+                fail("member-type","Government member type invalid")
             if(a.optString("provider") !in PhilippineEngine.providers ||
                 !providers.add(a.optString("provider")))fail("provider","Duplicate/unknown government provider")
         }
@@ -159,12 +206,21 @@ object WorkspaceAudit {
             if(!paidContributionPeriods.add(p.optString("accountId")+":"+p.optString("period")))
                 fail("duplicate-period","Duplicate government period")
             if(!month(p.optString("period")))fail("month","Invalid contribution period")
+            if(p.optString("status") !in listOf("Paid","Pending","Missed","Not Required"))
+                fail("status","Government contribution status is invalid")
+            optionalText(p,"referenceNumber",80);optionalText(p,"notes",500)
             if(p.optString("status")=="Paid"&&!date(p.optString("paymentDate")))
                 fail("date","Paid contribution has invalid payment date")
             checkMoney(p,"amount",true)
         }
         val mp2Numbers=mutableSetOf<String>()
         rows("mp2Accounts").forEach { a ->
+            requiredText(a,"name",80);active(a);optionalText(a,"accountNumber",40)
+            optionalTarget(a)
+            if(a.optString("dividendOption") !in listOf("Annual","Compounded"))
+                fail("dividend","MP2 dividend selection invalid")
+            if(a.has("initialPaymentDate")&&!date(a.optString("initialPaymentDate")))
+                fail("date","MP2 initial payment date invalid")
             val number=a.optString("accountNumber")
             if(number.isNotBlank()&&!mp2Numbers.add(number))
                 fail("duplicate-mp2","MP2 account number duplicated")
@@ -173,12 +229,27 @@ object WorkspaceAudit {
             parent("mp2Accounts","accountId",p)
             checkMoney(p,"amount")
             if(!date(p.optString("paymentDate")))fail("date","Invalid MP2 deposit date")
+            optionalText(p,"referenceNumber",80);optionalText(p,"notes",500)
         }
         rows("remittances").forEach { r ->
+            requiredText(r,"recipient",120)
+            optionalText(r,"provider",120);optionalText(r,"referenceNumber",80);optionalText(r,"notes",500)
+            if(r.optString("destinationType") !in listOf("Own account","Family / person"))
+                fail("destination","Remittance destination invalid")
+            if(r.optString("status") !in listOf("Pending","Completed"))
+                fail("status","Remittance status invalid")
+            if(r.opt("principalAsExpense") !is Boolean)
+                fail("principal","Remittance consumption-expense flag invalid")
+            if(Category.entries.none { category->category.label==r.optString("category") })
+                fail("category","Remittance expense category invalid")
             val sent=checkMoney(r,"sentAmount")
             val fee=checkMoney(r,"feeAmount",true)
             if(!date(r.optString("transferDate")))fail("date","Invalid remittance date")
             if(r.optString("status")=="Completed")checkMoney(r,"receivedAmount")
+            if(sent!=null&&fee!=null&&sent+fee>BudgetFeatures.MAX_MINOR)
+                fail("money","Remittance principal plus fee exceeds maximum")
+            if(r.has("receivedAmount")&&r.optString("status")!="Completed")
+                checkMoney(r,"receivedAmount")
             val amount=if(sent!=null&&fee!=null)
                 Math.addExact(if(r.optBoolean("principalAsExpense"))sent else 0L,fee)
                 else null
