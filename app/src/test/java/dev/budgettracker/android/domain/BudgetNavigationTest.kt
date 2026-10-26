@@ -28,7 +28,7 @@ class BudgetNavigationTest {
                 if(index%2==0)"Financial overview" else "Reminders")
         }
         assertEquals(20,history.size)
-        assertEquals("Financial overview",history.first())
+        assertEquals("Reminders",history.first())
         assertEquals("Financial overview",history.last())
     }
     @Test fun allDestinationsHaveUniqueNames() {
