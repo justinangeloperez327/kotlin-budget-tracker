@@ -3,6 +3,17 @@ plugins {
   id("org.jetbrains.kotlin.android")
   id("org.jetbrains.kotlin.plugin.compose")
 }
+// Manual signing only: never put keystore passwords or keys in source control.
+// In CI these variables are absent, so release candidates are unsigned.
+val releaseSigningValues = listOf(
+  "BT_RELEASE_STORE_FILE", "BT_RELEASE_STORE_PASSWORD",
+  "BT_RELEASE_KEY_ALIAS", "BT_RELEASE_KEY_PASSWORD"
+).map { System.getenv(it)?.takeIf(String::isNotBlank) }
+val manualReleaseSigning = releaseSigningValues.all { it != null }
+require(releaseSigningValues.all { it == null } || manualReleaseSigning) {
+  "Provide all four BT_RELEASE_* signing environment variables or none of them"
+}
+
 android {
   namespace = "dev.budgettracker.android"
   compileSdk = 36
@@ -10,12 +21,23 @@ android {
     applicationId = "dev.budgettracker.android"
     minSdk = 26
     targetSdk = 36
-    versionCode = 1
-    versionName = "0.1.0"
+    versionCode = 9
+    versionName = "0.9.0-rc.1"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+  }
+  signingConfigs {
+    if (manualReleaseSigning) {
+      create("manualRelease") {
+        storeFile = file(requireNotNull(releaseSigningValues[0]))
+        storePassword = requireNotNull(releaseSigningValues[1])
+        keyAlias = requireNotNull(releaseSigningValues[2])
+        keyPassword = requireNotNull(releaseSigningValues[3])
+      }
+    }
   }
   buildTypes {
     release {
+      if (manualReleaseSigning) signingConfig = signingConfigs.getByName("manualRelease")
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

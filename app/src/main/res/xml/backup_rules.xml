@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+  <!-- Android 11 and lower: never copy private finance databases or credentials. -->
+  <exclude domain="root" path="."/>
+  <exclude domain="device_root" path="."/>
+</full-backup-content>
