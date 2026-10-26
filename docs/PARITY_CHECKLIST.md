@@ -96,3 +96,11 @@ Remaining scope: native device UI validation, accessibility refinements, robust 
 - Versioned, checksum-validated JSON **device-only** backup export and explicitly confirmed **transactional replacement** through the system document picker; exported files are unencrypted and not synchronized.
 - Web-account data is never imported into or overwritten by this local backup workflow. Strict validation rejects inconsistent backups before database modification.
 - JVM and Android emulator tests cover backups and SQLite rollback. See [GROUP8_PARITY_AUDIT.md](GROUP8_PARITY_AUDIT.md) for verified parity and release blockers.
+
+## Group 9 — Release candidate and production security audit
+
+- Pinned Gradle 8.13 Wrapper with distribution SHA-256, version `0.9.0-rc.1` / `versionCode 9`, kept same Android applicationId for future upgrades.
+- Optional external signing configuration; all signing credentials must be supplied through environment variables at build time. Incomplete configuration fails. Default CI outputs remain unsigned.
+- Android 11 backup exclusion XML and Android 12+ cloud/device-transfer XML, in addition to existing `allowBackup=false` and no cleartext traffic.
+- R8 minification and shrinkResources on release, automatic source/unsigned-package permission/version/security checks, release lint and unit tests, standalone manual unsigned candidate workflow.
+- No publishing, automatic backend deployment, signing keys, or production APK uploaded. [Full release process and unresolved blockers](GROUP9_RELEASE_CHECKLIST.md).

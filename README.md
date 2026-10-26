@@ -2,7 +2,7 @@
 
 This is the **native Android Kotlin/Jetpack Compose port** of [next-budget-tracker](https://github.com/justinangeloperez327/next-budget-tracker), **not a Ktor website**.
 
-## Current state: Group 8 — source parity, integrity audit and device-only recovery
+## Current state: Group 9 — release-candidate and security hardening
 
 Android Studio project (Kotlin 2.2.21, Android Gradle Plugin 8.13.2, Gradle 8.13, Jetpack Compose BOM 2025.10.01 / Material 3, SDK 36, minimum API 26). Includes a responsive native navigation drawer, Sakura-inspired finance UI, complete monthly budget plan editor, category charts, device-only or web-account expense add/edit/delete, global search/category/month filters, safe CSV document export, character palettes and appearance modes, unit tests, Android instrumentation test sources and GitHub Actions CI.
 
@@ -15,7 +15,7 @@ Android Studio project (Kotlin 2.2.21, Android Gradle Plugin 8.13.2, Gradle 8.13
 3. Sync and run the `app` configuration on a physical Android device or emulator.
 4. Alternatively, using installed Gradle 8.13: `gradle :app:assembleDebug :app:testDebugUnitTest`.
 
-An official Gradle Wrapper is not yet included; use installed Gradle 8.13 until wrapper files are added. CI installs this exact version.
+Gradle 8.13 Wrapper is checked in and its distribution checksum is pinned. Use `./gradlew` or Windows `gradlew.bat`; installation of Gradle separately is no longer required.
 
 ## Finance/privacy rules
 
@@ -102,3 +102,9 @@ Detailed test plan: [Group 7 Android hardening](docs/GROUP7_ANDROID_HARDENING.md
 The **Data integrity & backup** screen checks source-shaped financial relationships, payment ownership, UUIDs, contribution periods and amount limits. In device-only mode, export a versioned JSON backup through Android's document picker; restore only after validation and explicit replacement confirmation. The restore transaction covers budgets, expenses and all financial trackers; it does not merge or upload local data to the web account. **Exported backup JSON is not encrypted.** Store it securely. The SHA-256 checksum detects accidental corruption, not malicious edits.
 
 [Group 8 source-parity and recovery audit](docs/GROUP8_PARITY_AUDIT.md) documents implemented features and remaining gaps. This is not yet a fully source-identical or production-signed app.
+
+## Group 9 — Release candidate build and privacy hardening
+
+The repository now builds Android release-candidate `0.9.0-rc.1` (`versionCode 9`) with R8 minification and resource shrinking. The pinned Gradle 8.13 Wrapper supports Windows/Linux. Android auto-backup/cloud/device-to-device exclusions protect the private finance database and Keystore-backed credentials. CI verifies an **unsigned** release APK/AAB and publishes only audit checksums; a **manual** GitHub Actions workflow may package unsigned candidates, without deploying anywhere.
+
+Production APK/AAB signing is opt-in and reads **four required** `BT_RELEASE_*` environment variables from the user's machine; no secrets are stored in GitHub. See [Group 9 release checklist](docs/GROUP9_RELEASE_CHECKLIST.md). No Play Store upload or automatic deployment has been configured.
