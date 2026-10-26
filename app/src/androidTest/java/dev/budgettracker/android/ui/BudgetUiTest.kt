@@ -106,7 +106,8 @@ class BudgetUiTest {
             compose.onAllNodesWithTag("expense:save").fetchSemanticsNodes().isEmpty()
         }
         compose.onNodeWithText("Search expenses").performTextInput(description)
-        compose.onNodeWithText(description).assertExists()
+        org.junit.Assert.assertTrue("Expected a saved ledger item as well as the search input",
+            compose.onAllNodesWithText(description).fetchSemanticsNodes().size >= 2)
         compose.onNodeWithText("AED 12.34").assertExists()
     }
 
