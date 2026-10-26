@@ -138,14 +138,17 @@ class FinancialAnalyticsTest {
             .put("2026-09",JSONObject().put("Food",25000L))
             .put("2026-10",JSONObject().put("Housing",100000L)
                 .put("Food",15000L)))
+        json.getJSONArray("expenses").put(JSONObject()
+            .put("id","category-october-food").put("description","Groceries")
+            .put("amount",30000L).put("date","2026-10-15").put("category","Food"))
         val history=FinancialAnalytics.categoryHistory(json,
             FinancialAnalytics.yearly(json,2026,today))
         val food=history.single { it.category==Category.FOOD }
         assertEquals(2,food.activeMonths)
         assertEquals(25000L+15000L,food.budget)
-        assertEquals(20000L,food.actual)
+        assertEquals(50000L,food.actual)
         assertEquals(1,food.underBudgetMonths)
-        assertEquals(0,food.overBudgetMonths)
+        assertEquals(1,food.overBudgetMonths)
         val housing=history.single{it.category==Category.HOUSING}
         assertEquals(1,housing.activeMonths)
         assertEquals(100000L,housing.budget)
