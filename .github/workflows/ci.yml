@@ -38,7 +38,7 @@ jobs:
 
 
   android-ui:
-    # Native shell commands instead of legacy Node.js 20 emulator actions.
+    # ReactiveCircus android-emulator-runner@v2 was verified to use Node.js 24.
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -58,43 +58,23 @@ jobs:
             echo "::error::Android emulator hardware acceleration unavailable on this runner"
             exit 1
           fi
-      - name: Install Android SDK and emulator image
+      - name: Install build SDK
         run: |
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
-            "platforms;android-36" "build-tools;35.0.0" \
-            "emulator" "system-images;android-35;google_apis;x86_64"
-      - name: Start headless Android emulator
-        run: |
-          echo "no" | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
-            --force -n group7-ui -k "system-images;android-35;google_apis;x86_64"
-          nohup "$ANDROID_HOME/emulator/emulator" -avd group7-ui \
-            -no-window -no-audio -no-boot-anim -no-snapshot \
-            -gpu swiftshader_indirect -memory 2048 \
-            > "$RUNNER_TEMP/group7-emulator.log" 2>&1 &
-          if ! timeout 180s "$ANDROID_HOME/platform-tools/adb" wait-for-device; then
-            echo "::error::ADB did not detect the launched emulator"
-            tail -100 "$RUNNER_TEMP/group7-emulator.log"
-            exit 1
-          fi
-          booted=0
-          for attempt in $(seq 1 180); do
-            if [ "$("$ANDROID_HOME/platform-tools/adb" shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; then
-              booted=1
-              break
-            fi
-            sleep 2
-          done
-          if [ "$booted" -ne 1 ]; then
-            echo "::error::Android emulator did not complete boot"
-            tail -100 "$RUNNER_TEMP/group7-emulator.log"
-            exit 1
-          fi
-          "$ANDROID_HOME/platform-tools/adb" shell settings put global window_animation_scale 0
-          "$ANDROID_HOME/platform-tools/adb" shell settings put global transition_animation_scale 0
-          "$ANDROID_HOME/platform-tools/adb" shell settings put global animator_duration_scale 0
-          "$ANDROID_HOME/platform-tools/adb" shell input keyevent 82
-      - name: Run Android UI and SQLite instrumentation
-        run: gradle --no-daemon :app:connectedDebugAndroidTest
+            "platforms;android-36" "build-tools;35.0.0"
+      - name: Run Compose UI and SQLite tests on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          cores: 2
+          ram-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          disable-spellchecker: true
+          enable-hw-keyboard: true
+          script: gradle --no-daemon :app:connectedDebugAndroidTest
       - name: Upload Android instrumentation results
         if: always()
         uses: actions/upload-artifact@v6
@@ -103,13 +83,5 @@ jobs:
           path: |
             app/build/outputs/androidTest-results/connected/
             app/build/reports/androidTests/connected/
-          retention-days: 7
-          if-no-files-found: warn
-      - name: Upload emulator diagnostics on failure
-        if: failure()
-        uses: actions/upload-artifact@v6
-        with:
-          name: kotlin-budget-tracker-emulator-diagnostics
-          path: ${{ runner.temp }}/group7-emulator.log
           retention-days: 7
           if-no-files-found: warn
