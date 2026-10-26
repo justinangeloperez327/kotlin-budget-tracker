@@ -20,12 +20,11 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: '8.13'
       - name: Install Android SDK
         run: |
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;35.0.0"
       - name: Build and unit tests
-        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest
+        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest
       - name: Upload debug APK (manual install only)
         uses: actions/upload-artifact@v6
         with:
@@ -34,7 +33,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
       - name: Android lint
-        run: gradle --no-daemon :app:lintDebug
+        run: ./gradlew --no-daemon :app:lintDebug
 
 
   android-ui:
@@ -49,7 +48,6 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: '8.13'
       - name: Enable Linux KVM
         run: |
           if [ -e /dev/kvm ]; then
@@ -74,7 +72,7 @@ jobs:
           disable-animations: true
           disable-spellchecker: true
           enable-hw-keyboard: true
-          script: gradle --no-daemon :app:connectedDebugAndroidTest
+          script: ./gradlew --no-daemon :app:connectedDebugAndroidTest
       - name: Upload Android instrumentation results
         if: always()
         uses: actions/upload-artifact@v6
@@ -85,3 +83,31 @@ jobs:
             app/build/reports/androidTests/connected/
           retention-days: 7
           if-no-files-found: warn
+
+  release-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Install Android SDK
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
+            "platforms;android-36" "build-tools;35.0.0"
+      - name: Check release configuration and backup exclusions
+        run: python3 scripts/verify_release_candidate.py --source-only
+      - name: Build unsigned minified release APK and AAB, run tests and release lint
+        run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease :app:testReleaseUnitTest :app:lintRelease
+      - name: Verify unsigned package metadata and hashes
+        run: python3 scripts/verify_release_candidate.py
+      - name: Upload release audit metadata only
+        uses: actions/upload-artifact@v6
+        with:
+          name: kotlin-budget-tracker-unsigned-release-audit
+          path: app/build/outputs/release-candidate/audit.json
+          if-no-files-found: error
+          retention-days: 7
