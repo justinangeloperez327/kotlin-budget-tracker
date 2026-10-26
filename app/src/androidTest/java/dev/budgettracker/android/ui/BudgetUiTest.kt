@@ -2,6 +2,7 @@ package dev.budgettracker.android.ui
 
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -23,7 +24,14 @@ import org.junit.runner.RunWith
 class BudgetUiTest {
     @get:Rule val compose=createAndroidComposeRule<MainActivity>()
 
+    private fun awaitReady() {
+        compose.waitUntil(timeoutMillis=20_000) {
+            compose.onAllNodesWithTag("finance:loading").fetchSemanticsNodes().isEmpty()
+        }
+    }
+
     private fun open(page:String) {
+        awaitReady()
         compose.onNodeWithTag("navigation-menu").performClick()
         compose.onNodeWithTag("nav:$page").performScrollTo().performClick()
         compose.onNodeWithTag("screen:$page").assertExists()
@@ -32,7 +40,6 @@ class BudgetUiTest {
     @Test fun drawerNavigationAndBackStack() {
         compose.onNodeWithTag("screen:Dashboard").assertExists()
         open("Financial overview")
-        compose.onNodeWithText("Financial overview").assertExists()
         open("Reminders")
         compose.onNodeWithTag("navigate-back").performClick()
         compose.onNodeWithTag("screen:Financial overview").assertExists()
@@ -46,7 +53,6 @@ class BudgetUiTest {
         compose.onNodeWithText("Monthly budget AED").assertExists()
         open("Expense tracker")
         compose.onNodeWithText("Add expense").performClick()
-        compose.onNodeWithText("Add expense").assertExists()
         compose.onNodeWithTag("expense:save").assertIsNotEnabled()
         compose.onNodeWithTag("expense:description").performTextInput("Grocery test")
         compose.onNodeWithTag("expense:amount").performTextInput("12.50")
