@@ -204,6 +204,22 @@ fun FinancialReportsScreen(model:FinanceViewModel) {
                 FinanceMetric("Government paid",Currency.PHP,annual.php{it.governmentPaid})
                 FinanceMetric("MP2 deposited",Currency.PHP,annual.php{it.mp2Saved})
                 FinanceMetric("Remittances received",Currency.PHP,annual.php{it.remittanceReceived})
+                Text("Category performance",style=MaterialTheme.typography.titleMedium)
+                FinancialAnalytics.categoryHistory(data,annual).forEach { category ->
+                    if(category.activeMonths>0) {
+                        Card(Modifier.fillMaxWidth()){
+                            Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
+                                Text(category.category.label,style=MaterialTheme.typography.titleSmall)
+                                Text("Budget "+currencyAmount(Currency.AED,category.budget)+
+                                    " · Actual "+currencyAmount(Currency.AED,category.actual))
+                                Text("Net variance "+currencyAmount(Currency.AED,category.variance))
+                                Text(category.activeMonths.toString()+" active months · "+
+                                    category.underBudgetMonths+" under · "+category.overBudgetMonths+" over",
+                                    style=MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
                 Text("Monthly budget trend",style=MaterialTheme.typography.titleMedium)
                 annual.months.forEach{entry->
                     Card(Modifier.fillMaxWidth()){
