@@ -124,6 +124,12 @@ fun BudgetApp(model: FinanceViewModel) {
                         "Bills & recurring" -> TrackerScreen(model, dev.budgettracker.android.domain.TrackerKind.BILL)
                         "Debt / Utang" -> TrackerScreen(model, dev.budgettracker.android.domain.TrackerKind.DEBT)
                         "Savings goals" -> TrackerScreen(model, dev.budgettracker.android.domain.TrackerKind.SAVINGS)
+                        "Remittances" -> RemittanceScreen(model)
+                        "Contributions" -> ContributionsOverview(model)
+                        "SSS" -> GovernmentScreen(model,"SSS")
+                        "PhilHealth" -> GovernmentScreen(model,"PHILHEALTH")
+                        "Pag-IBIG" -> GovernmentScreen(model,"PAGIBIG")
+                        "MP2" -> Mp2Screen(model)
                         else -> Placeholder(page)
                     }
                 }
