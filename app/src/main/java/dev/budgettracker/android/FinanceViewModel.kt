@@ -311,7 +311,7 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
                     savedMutationSequence++
                 }
             } catch(ex:Exception) {
-                error="Restore rejected; your existing device records were not replaced. "+
+                error="Restore failed. Check the device-only records before retrying. "+
                     (ex.message ?: "Unknown restore error")
             } finally {
                 loading=false

@@ -28,7 +28,7 @@ object WorkspaceAudit {
         val tables=linkedMapOf<String,List<JSONObject>>()
         maxCounts.forEach{ (name,cap) ->
             val arr=data.optJSONArray(name)
-            if(arr==null) { fail("missing-module",name+" must be an array");tables[name]=emptyList() }
+            if(arr==null) { if(name=="expenses")fail("missing-module","Expenses must be an array");tables[name]=emptyList() }
             else {
                 if(arr.length()>cap)fail("limit",name+" exceeds permitted number of rows")
                 tables[name]=(0 until minOf(cap+1,arr.length())).mapNotNull { index ->
