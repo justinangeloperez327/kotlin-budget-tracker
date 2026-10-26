@@ -131,4 +131,27 @@ class FinancialAnalyticsTest {
         assertEquals(40000,r.billsOutstanding)
         assertEquals(1,r.overdueBills)
     }
+
+    @Test fun historicalCategoryPerformanceTracksActiveUnderAndOverMonths() {
+        val json=data()
+        json.put("categoryBudgets",JSONObject()
+            .put("2026-09",JSONObject().put("Food",25000L))
+            .put("2026-10",JSONObject().put("Housing",100000L)
+                .put("Food",15000L)))
+        val history=FinancialAnalytics.categoryHistory(json,
+            FinancialAnalytics.yearly(json,2026,today))
+        val food=history.single { it.category==Category.FOOD }
+        assertEquals(2,food.activeMonths)
+        assertEquals(25000L+15000L,food.budget)
+        assertEquals(20000L,food.actual)
+        assertEquals(1,food.underBudgetMonths)
+        assertEquals(0,food.overBudgetMonths)
+        val housing=history.single{it.category==Category.HOUSING}
+        assertEquals(1,housing.activeMonths)
+        assertEquals(100000L,housing.budget)
+        assertEquals(130000L,housing.actual)
+        assertEquals(1,housing.overBudgetMonths)
+        assertEquals(-30000L,housing.variance)
+    }
+
 }
