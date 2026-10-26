@@ -23,6 +23,7 @@ fun RemittanceScreen(model: FinanceViewModel) {
     val fees=monthly.fold(0L) { s,r->Math.addExact(s,r.getLong("feeAmount")) }
     val received=monthly.filter{it.getString("status")=="Completed"}
         .fold(0L) {s,r->Math.addExact(s,r.optLong("receivedAmount",0))}
+    var historyYear by remember {mutableIntStateOf(LocalDate.now().year)}
     var editing by remember {mutableStateOf<JSONObject?>(null)}
     var showForm by remember {mutableStateOf(false)}
     var deleting by remember {mutableStateOf<JSONObject?>(null)}
@@ -42,8 +43,26 @@ fun RemittanceScreen(model: FinanceViewModel) {
                 Text(monthly.size.toString()+" transfers")
             }
         }
+        HorizontalDivider()
+        Text("Remittance history",style=MaterialTheme.typography.titleMedium)
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
+            TextButton(onClick={historyYear--}){Text("‹ Year")}
+            Text(historyYear.toString(),modifier=Modifier.padding(top=13.dp))
+            TextButton(onClick={historyYear++}){Text("Year ›")}
+        }
+        (1..12).forEach { month ->
+            val period=String.format(java.util.Locale.US,"%04d-%02d",historyYear,month)
+            val match=entries.filter{it.getString("transferDate").startsWith(period)}
+            val aed=match.fold(0L){s,r->Math.addExact(s,r.getLong("sentAmount"))}
+            val phpTotal=match.filter{it.getString("status")=="Completed"}
+                .fold(0L){s,r->Math.addExact(s,r.optLong("receivedAmount",0))}
+            if(match.isNotEmpty())
+                Text(period+" · sent "+aedMoney(aed)+" · received "+php(phpTotal),
+                    style=MaterialTheme.typography.bodySmall)
+        }
+        Text("Transactions",style=MaterialTheme.typography.titleMedium)
         if(entries.isEmpty())Text("No remittances recorded.")
-        entries.forEach { r ->
+        entries.filter{it.getString("transferDate").startsWith(historyYear.toString())}.forEach { r ->
             Card(Modifier.fillMaxWidth()){
                 Column(Modifier.padding(15.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
                     Text(r.getString("recipient"),style=MaterialTheme.typography.titleMedium)
