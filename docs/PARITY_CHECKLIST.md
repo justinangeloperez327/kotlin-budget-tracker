@@ -7,7 +7,7 @@ The goal is a feature-complete Kotlin/Jetpack Compose Android adaptation preserv
 | Feature from Next.js | Android migration state |
 | --- | --- |
 | Login/register/logout/account/session | Implemented via HTTPS mobile API, Android Keystore token storage, manual backend deployment needed |
-| Dashboard summary | Groups 3–6: actual AED expenses/budgets, linked payment totals and separately reported PHP contributions, MP2 and remittances |
+| Dashboard summary | Groups 3–7: cutoff-aware selected-month AED/PHP financial overview, bills, debt and savings |
 | Financial overview separated AED/PHP | Group 6: period cutoff-aware AED commitments and PHP government/MP2/remittance summaries; balances and attention |
 | Monthly and category budgets | Group 3: whole-plan atomic save, monthly report, category variance charts in device-only and web-account modes |
 | Expense CRUD, filters, CSV | Group 3: add/edit/delete, cross-month search and filters, filtered CSV export, managed linked-expense protection |
@@ -79,3 +79,13 @@ No automatic deployment, Play Store publishing or destructive migration.
 - Test fixtures cover historical and future transactions, AED/PHP isolation, CSV, reminder priorities and expected contribution periods. Instrumentation tests compile in CI; emulator execution remains outstanding.
 
 Remaining scope: native device UI validation, accessibility refinements, robust offline import/merge, backfill/reconciliation audit, artwork, notification scheduling if desired, and final end-to-end parity review.
+
+## Group 7 — Android UI/UX and reliability hardening
+
+- Bounded, saveable navigation history; system Back closes navigation or returns to a previous screen. Stable test tags and heading semantics for native Compose screens.
+- Inline expense and monthly budget validation, preventing invalid save attempts; saveable expense draft strings and selected category on activity recreation.
+- Light/dark theme colors adjusted for readable 4.5:1+ contrast against app surfaces and primary-action text.
+- Main dashboard now derives figures from the same historical reporting cutoff as Group 6.
+- Android CI includes a separate headless emulator execution job (API 35, KVM) for UI and SQLite instrumentation, in addition to the standard compiled tests, lint and debug APK.
+- Test matrix and manual gaps documented in [GROUP7_ANDROID_HARDENING.md](GROUP7_ANDROID_HARDENING.md). UI-test code is added; verify a successful emulator CI run before treating it as executed/passing.
+- Remaining work: process-death recovery, full TalkBack/RTL/large-font audit, cross-device/backend E2E, automatic import/sync, companion artwork, advanced notifications and visual parity details.

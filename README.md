@@ -2,11 +2,11 @@
 
 This is the **native Android Kotlin/Jetpack Compose port** of [next-budget-tracker](https://github.com/justinangeloperez327/next-budget-tracker), **not a Ktor website**.
 
-## Current state: Group 6 — Financial Overview, Reports, History and Reminders
+## Current state: Group 7 — Android navigation, accessibility and emulator hardening
 
 Android Studio project (Kotlin 2.2.21, Android Gradle Plugin 8.13.2, Gradle 8.13, Jetpack Compose BOM 2025.10.01 / Material 3, SDK 36, minimum API 26). Includes a responsive native navigation drawer, Sakura-inspired finance UI, complete monthly budget plan editor, category charts, device-only or web-account expense add/edit/delete, global search/category/month filters, safe CSV document export, character palettes and appearance modes, unit tests, Android instrumentation test sources and GitHub Actions CI.
 
-**Not yet an exact functional copy.** Online authentication and revision-aware synchronization are implemented but require the updated backend to be deployed manually. Bills, debt and savings now have native trackers with history. Remittances, SSS, PhilHealth, Pag-IBIG and MP2 have native screens. Financial Overview, Reports, History and in-app Reminders are now implemented; character artwork, offline write queuing and running emulator/UI instrumentation still need work. The app labels incomplete sections rather than fabricating records. [See the complete parity checklist](docs/PARITY_CHECKLIST.md).
+**Not yet an exact functional copy.** Online authentication and revision-aware synchronization are implemented but require the updated backend to be deployed manually. Bills, debt and savings now have native trackers with history. Remittances, SSS, PhilHealth, Pag-IBIG and MP2 have native screens. Financial Overview, Reports, History and in-app Reminders are now implemented; character artwork and offline write queuing remain. Group 7 adds an actual headless Android emulator instrumentation CI job, Compose UI tests and usability fixes; see its CI status before considering device UI verified. The app labels incomplete sections rather than fabricating records. [See the complete parity checklist](docs/PARITY_CHECKLIST.md).
 
 ## Run in Android Studio
 
@@ -84,3 +84,15 @@ Financial records entered in this app are not official confirmation of governmen
 - Kotlin unit regression tests exercise cutoffs, source-shaped data, double-count protection, AED/PHP separation, CSV exports, reminder priority and category/year performance. Android instrumentation tests cover local historical SQLite projections, but CI only **compiles**, not executes, emulator instrumentation.
 
 Missing or incomplete: device/emulator UI validation, notification scheduling, more advanced customizable visualizations, offline queue/automatic local-account merge, complete character artwork and full end-to-end parity audit. The original web account API must be deployed manually before remote login works.
+
+## Group 7 — Navigation and usability hardening
+
+- Explicit, bounded Android navigation history; Back returns to the previous visited section and closes an open drawer first. Main navigation history survives Activity recreation.
+- Stable Compose semantic identifiers for screens/navigation, with heading semantics. Expense form validation is inline (positive AED amounts, valid dates, descriptions); budget editor disables Save until all currency fields are valid.
+- Original theme names preserved with contrast-safe light/dark variants. Primary action text colors are explicitly chosen for readability; no theme changes financial records.
+- Dashboard totals now use the same time cutoff as Financial Overview and reports, excluding future-dated movements.
+- GitHub Actions retains standard compile/unit/lint/APK job and adds a KVM-backed API 35 Android emulator running Compose UI and SQLite instrumentation test suites. Superseded main-branch runs are cancelled.
+- Tests cover drawer/back navigation, form validation, theme selection, screen navigation, expense entry, and Activity recreation, in addition to SQLite financial invariants.
+- User data is never uploaded automatically. No PR, Google Play upload or Vercel auto-deployment.
+
+Detailed test plan: [Group 7 Android hardening](docs/GROUP7_ANDROID_HARDENING.md). **Passing compiled instrumentation tests is not the same as running them**; verify the emulator CI job has succeeded before asserting tested device behavior.
