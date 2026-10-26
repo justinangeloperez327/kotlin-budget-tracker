@@ -1,5 +1,6 @@
 package dev.budgettracker.android.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -9,6 +10,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import dev.budgettracker.android.domain.BudgetNavigation
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -23,11 +28,7 @@ import dev.budgettracker.android.domain.Money
 import java.time.LocalDate
 import kotlinx.coroutines.launch
 
-private val sections = listOf(
-    "Dashboard", "Financial overview", "Reminders", "Budget vs. actual", "Expense tracker",
-    "Bills & recurring", "Debt / Utang", "Savings goals", "Remittances", "Contributions",
-    "SSS", "PhilHealth", "Pag-IBIG", "MP2", "Reports"
-)
+private val sections = BudgetNavigation.destinations
 private val themes = linkedMapOf("sakura" to "Sakura", "kuromi" to "Kuromi",
     "keroppi" to "Keroppi", "vegeta" to "Vegeta", "naruto" to "Naruto",
     "kakashi" to "Kakashi", "sasuke" to "Sasuke", "ichigo" to "Ichigo")
@@ -51,11 +52,17 @@ fun BudgetApp(model: FinanceViewModel) {
     val scheme = if (dark) darkColorScheme(primary = p, background = Color(0xFF19161B), surface = Color(0xFF28232A))
         else lightColorScheme(primary = p, background = Color(0xFFFFF9FC), surface = Color.White)
     MaterialTheme(colorScheme = scheme) {
-        var page by rememberSaveable { mutableStateOf("Dashboard") }
+        var history by rememberSaveable { mutableStateOf(arrayListOf("Dashboard")) }
+        val page = history.last()
+        fun navigate(to: String) { history = BudgetNavigation.navigate(history, to) }
+        fun goBack() { history = BudgetNavigation.back(history) }
         var picker by remember { mutableStateOf(false) }
         var showAccount by remember { mutableStateOf(false) }
         val drawer = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
+        BackHandler(enabled = drawer.isOpen || history.size > 1) {
+            if (drawer.isOpen) scope.launch { drawer.close() } else goBack()
+        }
         ModalNavigationDrawer(drawerState = drawer, drawerContent = {
             ModalDrawerSheet {
                 Column(Modifier.verticalScroll(rememberScrollState()).padding(12.dp)) {
@@ -64,8 +71,11 @@ fun BudgetApp(model: FinanceViewModel) {
                     Text("UAE and Philippine finances", modifier = Modifier.padding(start = 12.dp, bottom = 12.dp),
                         style = MaterialTheme.typography.bodySmall)
                     sections.forEach { section ->
-                        NavigationDrawerItem(label = { Text(section) }, selected = page == section,
-                            onClick = { page = section; scope.launch { drawer.close() } })
+                        NavigationDrawerItem(
+                            label = { Text(section) }, selected = page == section,
+                            modifier = Modifier.testTag("nav:$section"),
+                            onClick = { navigate(section); scope.launch { drawer.close() } }
+                        )
                     }
                 }
             }
@@ -74,21 +84,30 @@ fun BudgetApp(model: FinanceViewModel) {
                 Column {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween) {
-                        TextButton(onClick = { scope.launch { drawer.open() } }) { Text("☰ Menu") }
-                        TextButton(onClick = { showAccount = true }) {
+                        TextButton(onClick = { scope.launch { drawer.open() } },
+                            modifier = Modifier.testTag("navigation-menu")) { Text("☰ Menu") }
+                        TextButton(onClick = { showAccount = true },
+                            modifier = Modifier.testTag("account-button")) {
                             Text(if (model.accountConfigured) "Account" else "Sign in")
                         }
-                        TextButton(onClick = { picker = true }) { Text("Theme") }
+                        TextButton(onClick = { picker = true },
+                            modifier = Modifier.testTag("theme-button")) { Text("Theme") }
                     }
-                    Row(Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(page, style = MaterialTheme.typography.headlineSmall)
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (history.size > 1) {
+                            IconButton(onClick = ::goBack,modifier=Modifier.testTag("navigate-back")) {
+                                Text("‹",style=MaterialTheme.typography.headlineMedium)
+                            }
+                        }
+                        Text(page,style=MaterialTheme.typography.titleLarge,
+                            maxLines=2,modifier=Modifier.weight(1f).semantics { heading() })
                         if (model.loading) CircularProgressIndicator(Modifier.size(22.dp))
                     }
                     HorizontalDivider()
                 }
             }) { inner ->
-                Column(Modifier.padding(inner).fillMaxSize()) {
+                Column(Modifier.padding(inner).fillMaxSize().testTag("screen:$page")) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(
@@ -119,9 +138,9 @@ fun BudgetApp(model: FinanceViewModel) {
                     }
                     when(page) {
                         "Dashboard" -> Dashboard(model)
-                        "Financial overview" -> FinancialOverviewScreen(model) { page = it }
+                        "Financial overview" -> FinancialOverviewScreen(model, ::navigate)
                         "Reports" -> FinancialReportsScreen(model)
-                        "Reminders" -> FinancialRemindersScreen(model) { page = it }
+                        "Reminders" -> FinancialRemindersScreen(model, ::navigate)
                         "Budget vs. actual" -> BudgetPlanScreen(model)
                         "Expense tracker" -> ExpenseLedgerScreen(model)
                         "Bills & recurring" -> TrackerScreen(model, dev.budgettracker.android.domain.TrackerKind.BILL)
