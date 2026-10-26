@@ -6,6 +6,8 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -46,7 +48,13 @@ class BudgetUiTest {
         open("Expense tracker")
         compose.onNodeWithText("Add expense").performClick()
         compose.onNodeWithText("Add expense").assertExists()
-        compose.onNodeWithText("Save expense").assertIsNotEnabled()
+        compose.onNodeWithTag("expense:save").assertIsNotEnabled()
+        compose.onNodeWithTag("expense:description").performTextInput("Grocery test")
+        compose.onNodeWithTag("expense:amount").performTextInput("12.50")
+        compose.onNodeWithTag("expense:save").assertIsEnabled()
+        compose.onNodeWithTag("expense:amount").performTextClearance()
+        compose.onNodeWithTag("expense:amount").performTextInput("0")
+        compose.onNodeWithTag("expense:save").assertIsNotEnabled()
         compose.onNodeWithText("Description").assertExists()
         compose.onNodeWithText("Amount (AED)").assertExists()
         compose.onNodeWithText("Cancel").performClick()
