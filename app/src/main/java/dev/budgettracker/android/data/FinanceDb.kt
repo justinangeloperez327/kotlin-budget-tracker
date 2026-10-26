@@ -12,6 +12,8 @@ import dev.budgettracker.android.domain.FinanceSnapshot
 import dev.budgettracker.android.domain.TrackerCommand
 import dev.budgettracker.android.domain.TrackerEngine
 import dev.budgettracker.android.domain.TrackerKind
+import dev.budgettracker.android.domain.PhilippineEngine
+import dev.budgettracker.android.domain.PhilippineCommand
 import org.json.JSONObject
 import java.time.LocalDate
 import java.time.YearMonth
@@ -229,8 +231,10 @@ class FinanceDb(context: Context, databaseName: String = "finance.db"): SQLiteOp
                 }
             }
             val moduleData=JSONObject()
-            TrackerEngine.keys.forEach { key ->
-                moduleData.put(key,TrackerEngine.array(after,key))
+            (TrackerEngine.keys + PhilippineEngine.keys).forEach { key ->
+                moduleData.put(key, org.json.JSONArray(when(val rows=after.optJSONArray(key)) {
+                    null -> "[]"; else -> rows.toString()
+                }))
             }
             val state=ContentValues().apply {
                 put("id",1);put("data",moduleData.toString())
@@ -239,6 +243,62 @@ class FinanceDb(context: Context, databaseName: String = "finance.db"): SQLiteOp
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
+        }
+    }
+
+    /** Group 5 and remittance expense reconciliation share a single SQLite commit. */
+    fun applyPhilippineCommand(command: PhilippineCommand) {
+        val sql=writableDatabase
+        sql.beginTransaction()
+        try {
+            val before=loadTrackerData()
+            val after=PhilippineEngine.apply(before,command)
+            fun expenseLinks(document: JSONObject): Map<String,JSONObject> =
+                PhilippineEngine.rows(document,"remittances").filter {
+                    it.optString("expenseId").isNotBlank()
+                }.associateBy { it.getString("expenseId") }
+            val oldLinks=expenseLinks(before)
+            val newLinks=expenseLinks(after)
+            require(newLinks.size==PhilippineEngine.rows(after,"remittances")
+                .count { it.optString("expenseId").isNotBlank() }) {
+                "Duplicate remittance expense reference"
+            }
+            val afterExpenses=TrackerEngine.rows(after,"expenses").associateBy { it.getString("id") }
+            (oldLinks.keys-newLinks.keys).forEach { id ->
+                val removed=sql.delete("expenses","id=? AND source=?",
+                    arrayOf(id,ExpenseSource.REMITTANCE.name))
+                check(removed==1) { "Remittance expense has the wrong owner or is missing" }
+            }
+            newLinks.keys.forEach { id ->
+                val row=requireNotNull(afterExpenses[id]) { "Missing remittance expense" }
+                val values=ContentValues().apply {
+                    put("description",row.getString("description"))
+                    put("amount",row.getLong("amount"))
+                    put("category",Category.entries.first {
+                        it.label==row.getString("category")
+                    }.name)
+                    put("date",row.getString("date"))
+                }
+                if(id in oldLinks) {
+                    val updated=sql.update("expenses",values,"id=? AND source=?",
+                        arrayOf(id,ExpenseSource.REMITTANCE.name))
+                    check(updated==1) { "Cannot update a non-remittance expense" }
+                } else {
+                    values.put("id",id)
+                    values.put("source",ExpenseSource.REMITTANCE.name)
+                    sql.insertOrThrow("expenses",null,values)
+                }
+            }
+            // This is the SAME JSON row used by Group 4, avoiding partial module overwrites.
+            val full=JSONObject()
+            (TrackerEngine.keys + PhilippineEngine.keys).forEach { key ->
+                full.put(key,org.json.JSONArray(after.optJSONArray(key)?.toString() ?: "[]"))
+            }
+            val state=ContentValues().apply { put("id",1);put("data",full.toString()) }
+            sql.insertWithOnConflict("tracker_state",null,state,SQLiteDatabase.CONFLICT_REPLACE)
+            sql.setTransactionSuccessful()
+        } finally {
+            sql.endTransaction()
         }
     }
 
