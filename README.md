@@ -2,7 +2,7 @@
 
 This is the **native Android Kotlin/Jetpack Compose port** of [next-budget-tracker](https://github.com/justinangeloperez327/next-budget-tracker), **not a Ktor website**.
 
-## Current state: Group 7 — Android navigation, accessibility and emulator hardening
+## Current state: Group 8 — source parity, integrity audit and device-only recovery
 
 Android Studio project (Kotlin 2.2.21, Android Gradle Plugin 8.13.2, Gradle 8.13, Jetpack Compose BOM 2025.10.01 / Material 3, SDK 36, minimum API 26). Includes a responsive native navigation drawer, Sakura-inspired finance UI, complete monthly budget plan editor, category charts, device-only or web-account expense add/edit/delete, global search/category/month filters, safe CSV document export, character palettes and appearance modes, unit tests, Android instrumentation test sources and GitHub Actions CI.
 
@@ -96,3 +96,9 @@ Missing or incomplete: device/emulator UI validation, notification scheduling, m
 - User data is never uploaded automatically. No PR, Google Play upload or Vercel auto-deployment.
 
 Detailed test plan: [Group 7 Android hardening](docs/GROUP7_ANDROID_HARDENING.md). **Passing compiled instrumentation tests is not the same as running them**; verify the emulator CI job has succeeded before asserting tested device behavior.
+
+## Group 8 — Integrity and device-only backup
+
+The **Data integrity & backup** screen checks source-shaped financial relationships, payment ownership, UUIDs, contribution periods and amount limits. In device-only mode, export a versioned JSON backup through Android's document picker; restore only after validation and explicit replacement confirmation. The restore transaction covers budgets, expenses and all financial trackers; it does not merge or upload local data to the web account. **Exported backup JSON is not encrypted.** Store it securely. The SHA-256 checksum detects accidental corruption, not malicious edits.
+
+[Group 8 source-parity and recovery audit](docs/GROUP8_PARITY_AUDIT.md) documents implemented features and remaining gaps. This is not yet a fully source-identical or production-signed app.

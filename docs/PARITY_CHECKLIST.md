@@ -89,3 +89,10 @@ Remaining scope: native device UI validation, accessibility refinements, robust 
 - Android CI includes a separate headless emulator execution job (API 35, KVM, Node.js 24-compatible Android Emulator Runner v2) for UI and SQLite instrumentation, in addition to the standard compiled tests, lint and debug APK.
 - Test matrix and manual gaps documented in [GROUP7_ANDROID_HARDENING.md](GROUP7_ANDROID_HARDENING.md). UI-test code is added; verify a successful emulator CI run before treating it as executed/passing.
 - Remaining work: process-death recovery, full TalkBack/RTL/large-font audit, cross-device/backend E2E, automatic import/sync, companion artwork, advanced notifications and visual parity details.
+
+## Group 8 — Final source-parity and local recovery audit
+
+- New privacy-preserving on-device audit of source-shaped budgets, limits, UUIDs, dates, managed expense amount/category/date, bill payment periods, debts, savings, government contributions, remittances and MP2 links.
+- Versioned, checksum-validated JSON **device-only** backup export and explicitly confirmed **transactional replacement** through the system document picker; exported files are unencrypted and not synchronized.
+- Web-account data is never imported into or overwritten by this local backup workflow. Strict validation rejects inconsistent backups before database modification.
+- JVM and Android emulator tests cover backups and SQLite rollback. See [GROUP8_PARITY_AUDIT.md](GROUP8_PARITY_AUDIT.md) for verified parity and release blockers.
