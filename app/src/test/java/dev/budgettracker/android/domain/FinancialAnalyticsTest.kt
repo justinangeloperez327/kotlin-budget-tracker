@@ -33,7 +33,7 @@ class FinancialAnalyticsTest {
         assertEquals(300000,r.budget)
         assertEquals(130000,r.spent)
         assertEquals(170000,r.variance)
-        assertEquals(130000,r.categorySpent[Category.HOUSING])
+        assertEquals(130000L,r.categorySpent[Category.HOUSING])
         assertEquals(0L,r.categorySpent[Category.FOOD])
         assertEquals(130000.0/300000*100,r.usedRate,0.00001)
         assertEquals(0L,FinancialAnalytics.monthly(data(),YearMonth.of(2026,11),today).spent)
