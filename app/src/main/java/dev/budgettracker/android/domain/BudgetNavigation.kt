@@ -8,7 +8,8 @@ object BudgetNavigation {
     val destinations = listOf(
         "Dashboard", "Financial overview", "Reminders", "Budget vs. actual",
         "Expense tracker", "Bills & recurring", "Debt / Utang", "Savings goals",
-        "Remittances", "Contributions", "SSS", "PhilHealth", "Pag-IBIG", "MP2", "Reports"
+        "Remittances", "Contributions", "SSS", "PhilHealth", "Pag-IBIG", "MP2", "Reports",
+        "Data integrity & backup"
     )
     fun navigate(history: List<String>, target: String): ArrayList<String> {
         require(target in destinations) { "Unknown destination: $target" }

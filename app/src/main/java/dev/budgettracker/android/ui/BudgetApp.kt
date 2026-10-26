@@ -168,6 +168,7 @@ fun BudgetApp(model: FinanceViewModel) {
                         "PhilHealth" -> GovernmentScreen(model,"PHILHEALTH")
                         "Pag-IBIG" -> GovernmentScreen(model,"PAGIBIG")
                         "MP2" -> Mp2Screen(model)
+                        "Data integrity & backup" -> DataSafetyScreen(model)
                         else -> Placeholder(page)
                     }
                 }
