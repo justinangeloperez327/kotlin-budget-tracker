@@ -85,6 +85,24 @@ class DeviceBackupTest {
         assertTrue(result.issues.any{it.code=="duplicate-payment"})
     }
 
+    @Test fun backupImportRejectsUnknownOrMissingFutureModulesWithoutSilentDataLoss() {
+        val good=JSONObject(DeviceBackup.encode(fresh()))
+        val altered=JSONObject(good.getString("data"))
+        altered.put("futureWallets",JSONArray())
+        val payload=altered.toString()
+        good.put("data",payload).put("sha256",DeviceBackup.digest(payload))
+        assertThrows(IllegalArgumentException::class.java) {
+            DeviceBackup.decode(good.toString())
+        }
+        altered.remove("futureWallets")
+        altered.remove("mp2Deposits")
+        val missing=altered.toString()
+        good.put("data",missing).put("sha256",DeviceBackup.digest(missing))
+        assertThrows(IllegalArgumentException::class.java){
+            DeviceBackup.decode(good.toString())
+        }
+    }
+
     @Test fun boundedInputReaderStopsLargeFileWithoutReadingToEnd() {
         var called=0
         val bytes=ByteArray(8192){'a'.code.toByte()}
