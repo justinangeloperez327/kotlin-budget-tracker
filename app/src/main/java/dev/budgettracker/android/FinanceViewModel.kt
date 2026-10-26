@@ -8,6 +8,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.budgettracker.android.data.FinanceDb
 import dev.budgettracker.android.domain.BudgetFeatures
+import dev.budgettracker.android.domain.PhilippineCommand
+import dev.budgettracker.android.domain.PhilippineEngine
 import dev.budgettracker.android.domain.TrackerCommand
 import dev.budgettracker.android.domain.TrackerEngine
 import dev.budgettracker.android.domain.Category
@@ -280,6 +282,11 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
             } finally { loading = false }
         }
     }
+
+    fun philippineMutation(command: PhilippineCommand) = write(
+        local = { db.applyPhilippineCommand(command) },
+        mobile = { PhilippineEngine.apply(it.fullData,command) }
+    )
 
     fun trackerMutation(command: TrackerCommand) = write(
         local = { db.applyTrackerCommand(command) },
