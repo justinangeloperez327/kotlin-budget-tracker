@@ -88,6 +88,15 @@ class BudgetUiTest {
         compose.onNodeWithText("Choose your theme").assertExists()
         compose.onNodeWithText("Done").performClick()
     }
+
+    @Test fun dataHealthAndBackupControlsAreVisibleAndLocalOnly() {
+        open("Data integrity & backup")
+        compose.onNodeWithTag("audit:status").assertExists()
+        compose.onNodeWithText("No integrity issues found").assertExists()
+        compose.onNodeWithTag("backup:export").assertIsEnabled()
+        compose.onNodeWithTag("backup:import").assertIsEnabled()
+    }
+
     @Test fun routeSurvivesActivityRecreation() {
         open("Reports")
         compose.activityRule.scenario.recreate()
