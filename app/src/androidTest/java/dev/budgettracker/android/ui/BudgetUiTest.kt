@@ -87,4 +87,12 @@ class BudgetUiTest {
         compose.onNodeWithText("Choose your theme").assertExists()
         compose.onNodeWithText("Done").performClick()
     }
+    @Test fun routeSurvivesActivityRecreation() {
+        open("Reports")
+        compose.activityRule.scenario.recreate()
+        compose.onNodeWithTag("screen:Reports").assertExists()
+        compose.onNodeWithTag("navigate-back").performClick()
+        compose.onNodeWithTag("screen:Dashboard").assertExists()
+    }
+
 }
