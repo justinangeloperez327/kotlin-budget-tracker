@@ -179,6 +179,25 @@ class FinanceDb(context: Context, databaseName: String = "finance.db"): SQLiteOp
                 .put("date",item.date.toString()))
         }
         saved.put("expenses",items)
+        // Group 6 reports need complete historical budgets, not just the selected month.
+        // This is a read-only projection; SQLite schema and existing records are unchanged.
+        val budgets = JSONObject()
+        readableDatabase.rawQuery("SELECT month,amount FROM budgets",null).use { cursor ->
+            while(cursor.moveToNext())budgets.put(cursor.getString(0),cursor.getLong(1))
+        }
+        val categoryBudgets = JSONObject()
+        readableDatabase.rawQuery("SELECT month,category,amount FROM allocations",null).use { cursor ->
+            while(cursor.moveToNext()) {
+                val month=cursor.getString(0)
+                val categories=categoryBudgets.optJSONObject(month) ?: JSONObject().also {
+                    categoryBudgets.put(month,it)
+                }
+                val label=Category.valueOf(cursor.getString(1)).label
+                categories.put(label,cursor.getLong(2))
+            }
+        }
+        saved.put("budgets",budgets)
+        saved.put("categoryBudgets",categoryBudgets)
         return saved
     }
 
