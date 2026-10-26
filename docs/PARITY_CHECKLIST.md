@@ -86,6 +86,6 @@ Remaining scope: native device UI validation, accessibility refinements, robust 
 - Inline expense and monthly budget validation, preventing invalid save attempts; saveable expense draft strings and selected category on activity recreation.
 - Light/dark theme colors adjusted for readable 4.5:1+ contrast against app surfaces and primary-action text.
 - Main dashboard now derives figures from the same historical reporting cutoff as Group 6.
-- Android CI includes a separate headless emulator execution job (API 35, KVM) for UI and SQLite instrumentation, in addition to the standard compiled tests, lint and debug APK.
+- Android CI includes a separate headless emulator execution job (API 35, KVM, Node.js 24-compatible Android Emulator Runner v2) for UI and SQLite instrumentation, in addition to the standard compiled tests, lint and debug APK.
 - Test matrix and manual gaps documented in [GROUP7_ANDROID_HARDENING.md](GROUP7_ANDROID_HARDENING.md). UI-test code is added; verify a successful emulator CI run before treating it as executed/passing.
 - Remaining work: process-death recovery, full TalkBack/RTL/large-font audit, cross-device/backend E2E, automatic import/sync, companion artwork, advanced notifications and visual parity details.

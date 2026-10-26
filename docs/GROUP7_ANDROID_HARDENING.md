@@ -20,7 +20,7 @@ Group 7 hardens the native Kotlin / Jetpack Compose application rather than inve
 
 GitHub Actions contains **two jobs**: `android` for Gradle, unit tests, lint, APK output and instrumentation **compilation**; `android-ui` for **execution** of `connectedDebugAndroidTest` in an API 35 x86_64 headless Android emulator on an Ubuntu KVM runner. Emulator tests do not connect to the Next.js backend or real financial accounts.
 
-The UI job uses only shell tools plus maintained GitHub Actions with Node.js 24 runtimes; it does not rely on legacy emulator actions. Emulator artifacts are uploaded for inspection, and superseded branch runs are cancelled to reduce duplicate execution.
+The UI job uses the maintained `reactivecircus/android-emulator-runner@v2` action, verified to declare `using: 'node24'` in its action metadata, and a hardware-accelerated API 35 emulator. It does not rely on deprecated Node.js 20 actions. Emulator artifacts are uploaded for inspection, and superseded branch runs are cancelled to reduce duplicate execution.
 
 ## Running locally (Windows / Android Studio)
 

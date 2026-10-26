@@ -91,7 +91,7 @@ Missing or incomplete: device/emulator UI validation, notification scheduling, m
 - Stable Compose semantic identifiers for screens/navigation, with heading semantics. Expense form validation is inline (positive AED amounts, valid dates, descriptions); budget editor disables Save until all currency fields are valid.
 - Original theme names preserved with contrast-safe light/dark variants. Primary action text colors are explicitly chosen for readability; no theme changes financial records.
 - Dashboard totals now use the same time cutoff as Financial Overview and reports, excluding future-dated movements.
-- GitHub Actions retains standard compile/unit/lint/APK job and adds a KVM-backed API 35 Android emulator running Compose UI and SQLite instrumentation test suites. Superseded main-branch runs are cancelled.
+- GitHub Actions retains standard compile/unit/lint/APK job and adds a KVM-backed API 35 Android emulator (ReactiveCircus Runner v2, Node.js 24) running Compose UI and SQLite instrumentation test suites. Superseded main-branch runs are cancelled.
 - Tests cover drawer/back navigation, form validation, theme selection, screen navigation, expense entry, and Activity recreation, in addition to SQLite financial invariants.
 - User data is never uploaded automatically. No PR, Google Play upload or Vercel auto-deployment.
 
