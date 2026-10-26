@@ -95,4 +95,19 @@ class BudgetUiTest {
         compose.onNodeWithTag("screen:Dashboard").assertExists()
     }
 
+    @Test fun expenseEntryPersistsAndCanBeFoundInLedger() {
+        open("Expense tracker")
+        val description="Device UI test groceries"
+        compose.onNodeWithText("Add expense").performClick()
+        compose.onNodeWithTag("expense:description").performTextInput(description)
+        compose.onNodeWithTag("expense:amount").performTextInput("12.34")
+        compose.onNodeWithTag("expense:save").assertIsEnabled().performClick()
+        compose.waitUntil(timeoutMillis=20_000) {
+            compose.onAllNodesWithTag("expense:save").fetchSemanticsNodes().isEmpty()
+        }
+        compose.onNodeWithText("Search expenses").performTextInput(description)
+        compose.onNodeWithText(description).assertExists()
+        compose.onNodeWithText("AED 12.34").assertExists()
+    }
+
 }
