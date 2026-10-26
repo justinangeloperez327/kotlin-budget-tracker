@@ -41,6 +41,17 @@ data class FinancialYear(val year: Int, val months: List<FinancialMonth>) {
     val totalOverspent get() = aed { it.overspent }
 }
 
+data class HistoricalCategory(
+    val category: Category,
+    val budget: Long,
+    val actual: Long,
+    val activeMonths: Int,
+    val underBudgetMonths: Int,
+    val overBudgetMonths: Int
+) {
+    val variance: Long get() = Math.subtractExact(budget,actual)
+}
+
 data class FinancialOverview(
     val month: FinancialMonth,
     val billsOutstanding: Long,
@@ -117,6 +128,26 @@ object FinancialAnalytics {
         }
         return FinancialYear(year,(1..end).map { monthly(data,YearMonth.of(year,it),today) })
     }
+
+    /** Mirrors source historicalBudgetAnalysis category rollups, excluding inactive months. */
+    fun categoryHistory(data: JSONObject, report: FinancialYear): List<HistoricalCategory> =
+        Category.entries.map { category ->
+            val active=report.months.mapNotNull { entry ->
+                val allocation=data.optJSONObject("categoryBudgets")
+                    ?.optJSONObject(entry.month.toString())
+                    ?.optLong(category.label,0L) ?: 0L
+                val spent=entry.categorySpent[category] ?: 0L
+                if(allocation==0L && spent==0L) null else allocation to spent
+            }
+            HistoricalCategory(
+                category=category,
+                budget=active.fold(0L){sum,v->Math.addExact(sum,v.first)},
+                actual=active.fold(0L){sum,v->Math.addExact(sum,v.second)},
+                activeMonths=active.size,
+                underBudgetMonths=active.count{it.first>it.second},
+                overBudgetMonths=active.count{it.first<it.second}
+            )
+        }
 
     fun availableYears(data: JSONObject, today: LocalDate=LocalDate.now()): List<Int> {
         val result=mutableSetOf(today.year)
