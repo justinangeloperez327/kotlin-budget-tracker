@@ -2,11 +2,11 @@
 
 This is the **native Android Kotlin/Jetpack Compose port** of [next-budget-tracker](https://github.com/justinangeloperez327/next-budget-tracker), **not a Ktor website**.
 
-## Current state: Group 4 — recurring bills, debts, and savings
+## Current state: Group 5 — remittances and Philippine finance
 
 Android Studio project (Kotlin 2.2.21, Android Gradle Plugin 8.13.2, Gradle 8.13, Jetpack Compose BOM 2025.10.01 / Material 3, SDK 36, minimum API 26). Includes a responsive native navigation drawer, Sakura-inspired finance UI, complete monthly budget plan editor, category charts, device-only or web-account expense add/edit/delete, global search/category/month filters, safe CSV document export, character palettes and appearance modes, unit tests, Android instrumentation test sources and GitHub Actions CI.
 
-**Not yet an exact functional copy.** Online authentication and revision-aware synchronization are implemented but require the updated backend to be deployed manually. Bills, debt and savings now have native trackers with history. Remittances, SSS, PhilHealth, Pag-IBIG, MP2, advanced historical reports, reminders and companion artwork are not yet implemented. The app labels incomplete sections rather than fabricating records. [See the complete parity checklist](docs/PARITY_CHECKLIST.md).
+**Not yet an exact functional copy.** Online authentication and revision-aware synchronization are implemented but require the updated backend to be deployed manually. Bills, debt and savings now have native trackers with history. Remittances, SSS, PhilHealth, Pag-IBIG and MP2 now have native screens; consolidated reports, reminders and companion artwork are not yet fully implemented. The app labels incomplete sections rather than fabricating records. [See the complete parity checklist](docs/PARITY_CHECKLIST.md).
 
 ## Run in Android Studio
 
@@ -62,3 +62,13 @@ Android CI keeps a debug APK as a seven-day workflow artifact for manual install
 - Tests cover source calculation policies, recurrence/date clamping, unique payment periods, repayments, savings transfers, linked expense metadata, and isolated SQLite transactions. CI builds debug APK and tests; instrumentation runs only when explicitly executed with an emulator.
 
 No automatic deployment, Play Store publication or pull requests.
+
+## Group 5 — Remittances, Philippine contributions and MP2
+
+- Remittances: AED sent and fee; PHP received; status Pending/Completed; recipient, provider, destination, effective rate and reference. Edit/delete reconciles the matching AED expense in the same operation. Own-account principal is excluded from expenses when the principal toggle is off, while the fee counts as an AED expense.
+- SSS, PhilHealth, Pag-IBIG: separate member-type profiles, account identifiers, frequency, monthly target, paid/pending/missed/not-required periods and year-by-year histories. Missing periods are shown as "No record", not automatically missed.
+- MP2: several accounts, account number, dividend option, deposit history, monthly target and estimated five-year maturity from first payment; deposits are PHP savings rather than AED expenses.
+- Private SQLite preserves Group 4 data, while remittance expenses and source data commit in one transaction. Web-account edits use the existing revision-checked authenticated workspace API.
+- JVM regression tests and Android database instrumentation test sources cover money separation, expense links, PHP contributions, MP2 maturity and cross-module preservation. CI compiles instrumentation tests but does not run an emulator.
+
+Financial records entered in this app are not official confirmation of government contributions or bank transactions. MP2 maturity is an estimated date, not a guaranteed dividend/withdrawal event. No automated Play Store or Vercel deployment is enabled.

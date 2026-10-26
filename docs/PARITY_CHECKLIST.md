@@ -14,9 +14,9 @@ The goal is a feature-complete Kotlin/Jetpack Compose Android adaptation preserv
 | Bills recurring and linked payment expense | Group 4: native recurring bill create/edit, schedule, payment/history/undo and atomic linked AED expenses |
 | Debt and repayment expense | Group 4: native debt tracker, progress, repayment history and linked expenses |
 | Savings goals and deposit history | Group 4: native goal management, target progress, deposit history; transfers excluded from expenses |
-| Remittances AED sent, fee, PHP received, rate | Not implemented |
-| SSS/PhilHealth/Pag-IBIG and history | Not implemented |
-| MP2 savings, maturity, history | Not implemented |
+| Remittances AED sent, fee, PHP received, rate | Group 5: native AED/PHP remittances, fees, effective rates, linked expenses and history |
+| SSS/PhilHealth/Pag-IBIG and history | Group 5: provider accounts, statuses, year history and explicit missed records |
+| MP2 savings, maturity, history | Group 5: multiple PHP accounts, deposits, maturity and history |
 | Reports, CSV, historical analysis | Not implemented |
 | In-app reminders | Not implemented |
 | Sakura, Kuromi, Keroppi, Vegeta, Naruto, Kakashi, Sasuke, Ichigo | Native palette selector; illustrations pending |
@@ -61,3 +61,11 @@ No automatic deployment, Play Store publishing or destructive migration.
 - Non-destructive private SQLite database upgrade from v1 to v2. No local data reset and no automatic merge to PostgreSQL.
 - Java/Kotlin unit tests port source invariants, and compiled Android instrumentation tests cover transaction rollback and private storage.
 - Outstanding parity: remittances, SSS, PhilHealth, Pag-IBIG, MP2, deep reports, reminders, complete artwork, and verified device UI testing.
+
+## Group 5 — Implemented modules
+
+- Remittances: AED principal and fee, PHP received, pending/completed status, reference, effective PHP/AED rate, own-account transfer versus support-expense handling, create/edit/delete and transaction history.
+- SSS/PhilHealth/Pag-IBIG: provider-specific member types, profiles, monthly/quarterly settings, explicit period statuses, twelve-month history and YTD PHP totals; no entry remains "No record".
+- MP2: multiple accounts, dividend option, monthly PHP savings target, deposits, estimated five-year maturity and year history.
+- Device mode persists full Group 4 and Group 5 module arrays in the private SQLite tracker-state row; expense-linked remittance writes are atomic. Web mode preserves authenticated revision-checked whole-workspace saves.
+- Remaining: consolidated overview, deep historical reports and exports, reminders, complete companion artwork, automated migration, offline write queue and executed emulator UI tests.
