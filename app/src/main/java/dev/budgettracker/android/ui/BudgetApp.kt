@@ -192,13 +192,23 @@ private fun Dashboard(model: FinanceViewModel) {
         Stat("Outstanding scheduled bills", aed(due), "Unpaid bills for the current month")
         Stat("Remaining debt", aed(debtBalance), "Loan balances after recorded repayments")
         Stat("Savings deposits", aed(savingsBalance), "Recorded transfers, not consumption expenses")
-        Card(Modifier.fillMaxWidth().padding(top = 16.dp)) {
-            Column(Modifier.padding(20.dp)) {
-                Text("Philippine finances (PHP)", style = MaterialTheme.typography.titleMedium)
-                Text("SSS, PhilHealth, Pag-IBIG and MP2 are not yet connected. AED and PHP totals remain separate.",
-                    modifier = Modifier.padding(top = 10.dp))
-            }
-        }
+        val philippines = dev.budgettracker.android.domain.PhilippineEngine
+        val year = java.time.LocalDate.now().year.toString()
+        val ytdGovernment = philippines.rows(modules,"governmentContributions")
+            .filter { it.getString("status")=="Paid" && it.getString("period").startsWith(year) }
+            .fold(0L){ total,row -> Math.addExact(total,row.getLong("amount")) }
+        val mp2Total = philippines.rows(modules,"mp2Deposits")
+            .fold(0L){ total,row -> Math.addExact(total,row.getLong("amount")) }
+        val phpRemitted = philippines.rows(modules,"remittances")
+            .filter { it.getString("status")=="Completed" && it.getString("transferDate").startsWith(year) }
+            .fold(0L){ total,row -> Math.addExact(total,row.optLong("receivedAmount",0)) }
+        Text("Philippine finances · PHP",style=MaterialTheme.typography.titleLarge,
+            modifier=Modifier.padding(top=20.dp,bottom=8.dp))
+        Stat("Government paid YTD", php(ytdGovernment), "SSS, PhilHealth and Pag-IBIG paid records")
+        Stat("MP2 recorded savings", php(mp2Total), "Savings deposits, not AED consumption")
+        Stat("PHP remittances received YTD", php(phpRemitted), "Completed transfers only")
+        Text("AED and PHP amounts are shown in separate currencies and never added together.",
+            style=MaterialTheme.typography.bodySmall, modifier=Modifier.padding(top=10.dp))
     }
 }
 
