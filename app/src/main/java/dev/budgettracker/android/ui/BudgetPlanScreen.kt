@@ -7,6 +7,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.budgettracker.android.FinanceViewModel
@@ -27,6 +28,11 @@ fun BudgetPlanScreen(model: FinanceViewModel) {
             }
         }
     }
+    val budgetValid=runCatching { parseMinor(budget) }.isSuccess
+    val invalidAllocations=Category.entries.filter { category ->
+        runCatching { parseMinor(fields[category] ?: "") }.isFailure
+    }
+    val planValid=budgetValid && invalidAllocations.isEmpty()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -36,17 +42,21 @@ fun BudgetPlanScreen(model: FinanceViewModel) {
         }
         Text("Budget plan", style = MaterialTheme.typography.titleLarge)
         OutlinedTextField(budget, { budget = it }, label = { Text("Monthly budget AED") },
+            isError=budget.isNotBlank() && !budgetValid,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            singleLine = true, modifier = Modifier.fillMaxWidth())
+            singleLine = true, modifier = Modifier.fillMaxWidth().testTag("budget:total"))
         Category.entries.forEach { category ->
             OutlinedTextField(fields[category] ?: "0.00", { fields[category] = it },
                 label = { Text(category.label + " allocation AED") },
+                isError=category in invalidAllocations,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true, modifier = Modifier.fillMaxWidth())
+                singleLine = true, modifier = Modifier.fillMaxWidth().testTag("budget:"+category.name))
         }
+        if(!planValid)Text("Enter valid non-negative AED amounts (max two decimals) for all fields.",
+            color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
         Button(onClick = { model.savePlan(budget, fields.toMap()) },
-            enabled = !model.loading && !model.syncBlocked,
-            modifier = Modifier.fillMaxWidth()) { Text("Save complete plan") }
+            enabled = !model.loading && !model.syncBlocked && planValid,
+            modifier = Modifier.fillMaxWidth().testTag("budget:save")) { Text("Save complete plan") }
         HorizontalDivider()
         Text("Budget vs. actual", style = MaterialTheme.typography.titleLarge)
         arrayOf(
