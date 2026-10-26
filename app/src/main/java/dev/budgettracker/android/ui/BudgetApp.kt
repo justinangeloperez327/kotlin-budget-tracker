@@ -32,25 +32,41 @@ private val sections = BudgetNavigation.destinations
 private val themes = linkedMapOf("sakura" to "Sakura", "kuromi" to "Kuromi",
     "keroppi" to "Keroppi", "vegeta" to "Vegeta", "naruto" to "Naruto",
     "kakashi" to "Kakashi", "sasuke" to "Sasuke", "ichigo" to "Ichigo")
-private fun accent(name: String) = when(name) {
+/**
+ * Contrast-safe semantic accents. Light primary is readable on white (>=4.5:1);
+ * dark primary is readable on #28232A, and black on-primary is readable on each.
+ */
+private fun accent(name: String, dark: Boolean) = if(dark) when(name) {
+    "kuromi" -> Color(0xFFDCA0E6)
+    "keroppi" -> Color(0xFF96D5A2)
+    "vegeta" -> Color(0xFFA0BAFF)
+    "naruto" -> Color(0xFFFFC087)
+    "kakashi" -> Color(0xFF9BC8BB)
+    "sasuke" -> Color(0xFFB9AAFF)
+    "ichigo" -> Color(0xFFFFB581)
+    else -> Color(0xFFF39BBE)
+} else when(name) {
     "kuromi" -> Color(0xFFA34DAF)
-    "keroppi" -> Color(0xFF418854)
+    "keroppi" -> Color(0xFF367347)
     "vegeta" -> Color(0xFF365CC4)
-    "naruto" -> Color(0xFFC36322)
-    "kakashi" -> Color(0xFF60817B)
+    "naruto" -> Color(0xFF9C4B17)
+    "kakashi" -> Color(0xFF4D6B65)
     "sasuke" -> Color(0xFF6660BB)
-    "ichigo" -> Color(0xFFD46829)
+    "ichigo" -> Color(0xFFA74B14)
     else -> Color(0xFFAD426D)
 }
+
 private fun aed(value: Long) = "AED " + Money(Currency.AED, value.coerceAtLeast(0)).decimal().toPlainString()
 private fun variance(value: Long) = if (value < 0) "Over by " + aed(-value) else aed(value) + " remaining"
 
 @Composable
 fun BudgetApp(model: FinanceViewModel) {
     val dark = when(model.appearance) { "dark" -> true; "light" -> false; else -> isSystemInDarkTheme() }
-    val p = accent(model.theme)
-    val scheme = if (dark) darkColorScheme(primary = p, background = Color(0xFF19161B), surface = Color(0xFF28232A))
-        else lightColorScheme(primary = p, background = Color(0xFFFFF9FC), surface = Color.White)
+    val p = accent(model.theme,dark)
+    val scheme = if (dark) darkColorScheme(primary = p, onPrimary = Color.Black,
+        background = Color(0xFF19161B), surface = Color(0xFF28232A))
+        else lightColorScheme(primary = p, onPrimary = Color.White,
+            background = Color(0xFFFFF9FC), surface = Color.White)
     MaterialTheme(colorScheme = scheme) {
         var history by rememberSaveable { mutableStateOf(arrayListOf("Dashboard")) }
         val page = history.last()
