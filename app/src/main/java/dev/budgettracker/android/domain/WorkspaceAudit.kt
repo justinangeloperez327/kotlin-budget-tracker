@@ -257,6 +257,6 @@ object WorkspaceAudit {
             if(amount==0L&&eid.isNotBlank())fail("unexpected-link","Zero-cost remittance has expense")
             if(amount!=null&&amount>0L)link(eid,amount,r.optString("category"),r.optString("transferDate"))
         }
-        return AuditResult(issues.toList(),arrays.keys.associateWith{rows(it).size})
+        return AuditResult(issues.toList(),maxCounts.keys.associateWith{rows(it).size})
     }
 }
