@@ -116,3 +116,8 @@ CI now includes API 35 and API 36 emulator checks, a disposable-key signing smok
 Manual release scripts verify that a user-signed APK/AAB matches the chosen upload key and that an in-place APK upgrade preserves the signing identity and increases versionCode before touching a device. Actual installation requires explicit confirmation. Android 16 edge-to-edge handling and accessible Back navigation have been hardened.
 
 **A real release key, staging backend and physical devices were not provided. No production signing or Play Store publication was performed.** See [Group 10 production checklist](docs/GROUP10_PRODUCTION_ACCEPTANCE.md) and [manual release approval template](docs/RELEASE_APPROVAL_TEMPLATE.md).
+
+
+### Group 10 continuation — mobile API safety checks
+
+Added in-process HTTPS/mobile API contract tests, Android Keystore tamper tests, and fail-closed remote-save recovery. An uncertain save always blocks another remote edit until authoritative refresh, including malformed HTTP 200 acknowledgments. For a **manually deployed staging test environment only**, [run the opt-in read-only workspace probe](docs/GROUP10_PRODUCTION_ACCEPTANCE.md#group-10-continuation--transport-and-staging-acceptance). It never modifies remote data or automatically performs a production test.

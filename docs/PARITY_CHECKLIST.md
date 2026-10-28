@@ -112,3 +112,11 @@ Remaining scope: native device UI validation, accessibility refinements, robust 
 - Manual signer-aware APK/AAB verifier and fail-closed, opt-in in-place version upgrade preflight.
 - Python security/upgrade unit tests and legacy SQLite upgrade instrumentation coverage.
 - Physical-device, manually deployed backend and privacy/compliance approval remain open gates; see [GROUP10_PRODUCTION_ACCEPTANCE.md](GROUP10_PRODUCTION_ACCEPTANCE.md).
+
+
+### Group 10 continuation
+
+- Android unit tests cover real HTTP response/error semantics using an in-process fake HTTPS connector (no backend or credentials), including 409, malformed 200 acknowledgments, bearer-only transport and bounded response sizes.
+- Remote write recovery is **fail closed**: any unconfirmed save blocks further writes until a successful authoritative workspace refresh; HTTP 401 clears local mobile credentials.
+- Emulator tests cover encrypted session storage, tamper detection and invalid session rejection.
+- Optional staging probe is GET-only and must be invoked manually, with staging confirmation and test-token environment variable; **no staging backend or live token was available in CI**.

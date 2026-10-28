@@ -50,3 +50,28 @@ Use RELEASE_APPROVAL_TEMPLATE.md to document evidence. Never commit keystores, p
 ## Incomplete before production
 
 Live backend and physical-device end-to-end acceptance cannot be verified using GitHub CI alone. Local SQLite and manually exported JSON remain unencrypted beyond Android application sandbox/file handling. OS background reminders, automatic local/cloud merge and original companion illustrations remain out of scope. No production signing, deployment, PR or Play publication occurs in Group 10.
+
+
+## Group 10 continuation — transport and staging acceptance
+
+The automated CI suite now adds **in-process mobile API wire tests** for the existing Next.js mobile contract:
+
+- HTTPS endpoint construction, POST login body, no cookie/query credentials and bearer-token header isolation.
+- GET workspace projection, revisioned PUT preserving other modules, and exact revision increment.
+- HTTP 401/403/409/500 and 302 redirects, malformed HTTP 200 JSON, oversized responses and oversized workspace saves.
+- Reject invalid tokens and over-limit JSON **before opening a network connection**.
+- Once a remote write is attempted, any unconfirmed save response (including malformed successful HTTP 200 responses or a validation error) requires an explicit authoritative refresh before further edits. Only an expired 401 session clears credentials and requests sign-in. This prevents accidental duplicate writes after a server commit with a lost reply.
+- Real-device encrypted session storage: confirm AES-GCM ciphertext is neither the token nor plaintext origin, reject tampering and erase invalid stored sessions.
+
+**Staging probe:** run the optional **read-only** probe yourself after deploying an isolated staging backend. It sends GET only: no registration, PUT writes, logout or token revocation, and never prints email/financial data.
+
+\`\`\`powershell
+python scripts/staging_mobile_readonly_probe.py --origin "https://YOUR-STAGING-HOST" --staging-confirmed
+$env:BT_STAGING_MOBILE_TOKEN = "<test mobile token from your staging environment>"
+python scripts/staging_mobile_readonly_probe.py --origin "https://YOUR-STAGING-HOST" --staging-confirmed
+Remove-Item Env:BT_STAGING_MOBILE_TOKEN
+\`\`\`
+
+The first command checks that unauthenticated GET is rejected (HTTP 401 or 403). With an authorized staging test token, the second verifies a valid user/workspace schema and revision **without changing it**. It refuses HTTP, embedded credentials, query parameters, redirects, unexpected public access, invalid tokens, oversized responses and missing core modules. The script has an offline mocked test suite in CI; it **does not claim a live staging test has been performed**.
+
+**Still manual:** token expiry/revocation tests, concurrent edits returning revision 409, remote-account isolation, production-device network interruption, Play Console review, real signing, and physical-device go/no-go.
