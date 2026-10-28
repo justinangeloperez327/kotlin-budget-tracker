@@ -8,7 +8,13 @@ import org.json.JSONObject
 class MobileApiException(val status: Int, message: String): Exception(message)
 
 /** HTTPS-only mobile client. No browser cookies, redirects, or plaintext credentials in URLs. */
-class MobileApi(origin: String) {
+class MobileApi internal constructor(
+    origin: String,
+    private val connectionFactory: (URL) -> HttpsURLConnection
+) {
+    constructor(origin: String): this(origin, { url ->
+        url.openConnection() as HttpsURLConnection
+    })
     private val base = validatedServerOrigin(origin)
 
     private fun readBounded(stream: InputStream, maximum: Int = 3 * 1024 * 1024): String {
@@ -29,7 +35,7 @@ class MobileApi(origin: String) {
 
     fun request(path: String, method: String, token: String? = null, body: JSONObject? = null): JSONObject {
         require(path.startsWith("/api/mobile/") && !path.contains(".."))
-        val connection = URL(base + path).openConnection() as HttpsURLConnection
+        val connection = connectionFactory(URL(base + path))
         connection.instanceFollowRedirects = false
         connection.connectTimeout = 10_000
         connection.readTimeout = 20_000
