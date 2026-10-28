@@ -38,7 +38,11 @@ jobs:
   android-ui:
     # ReactiveCircus android-emulator-runner@v2 was verified to use Node.js 24.
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [35, 36]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
@@ -61,7 +65,7 @@ jobs:
       - name: Run Compose UI and SQLite tests on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: ${{ matrix.api }}
           target: google_apis
           arch: x86_64
           cores: 2
@@ -75,7 +79,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: kotlin-budget-tracker-instrumentation
+          name: kotlin-budget-tracker-instrumentation-api-${{ matrix.api }}
           path: |
             app/build/outputs/androidTest-results/connected/
             app/build/reports/androidTests/connected/
@@ -109,3 +113,47 @@ jobs:
           path: app/build/outputs/release-candidate/audit.json
           if-no-files-found: error
           retention-days: 7
+
+  signing-smoke:
+    # Test signing only: ephemeral, disposable key generated fresh by CI.
+    # NEVER publish or upload the APK, AAB, keystore, or password.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Install Android SDK
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
+            "platforms;android-36" "build-tools;35.0.0"
+      - name: Create disposable CI-only upload key
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/ci-only-budget-tracker-signing.p12"
+          keytool -genkeypair -noprompt -alias ci-only-release \
+            -keyalg RSA -keysize 3072 -validity 2 -storetype PKCS12 \
+            -dname "CN=CI signing test only,O=Not for distribution,C=US" \
+            -keystore "$key" -storepass ci-smoke-not-a-secret \
+            -keypass ci-smoke-not-a-secret
+          chmod 600 "$key"
+          echo "BT_RELEASE_STORE_FILE=$key" >> "$GITHUB_ENV"
+          echo "BT_RELEASE_STORE_PASSWORD=ci-smoke-not-a-secret" >> "$GITHUB_ENV"
+          echo "BT_RELEASE_KEY_ALIAS=ci-only-release" >> "$GITHUB_ENV"
+          echo "BT_RELEASE_KEY_PASSWORD=ci-smoke-not-a-secret" >> "$GITHUB_ENV"
+      - name: Build signed APK/AAB using throwaway key
+        run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease
+      - name: Verify signed artifacts match throwaway keystore
+        run: python3 scripts/verify_signed_candidate.py --report "$RUNNER_TEMP/signed-smoke.json"
+      - name: Remove disposable signing key and signed artifacts
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$RUNNER_TEMP/ci-only-budget-tracker-signing.p12" \
+            "$RUNNER_TEMP/signed-smoke.json" \
+            app/build/outputs/apk/release/app-release.apk \
+            app/build/outputs/bundle/release/app-release.aab
