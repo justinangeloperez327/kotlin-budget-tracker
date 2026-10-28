@@ -104,3 +104,11 @@ Remaining scope: native device UI validation, accessibility refinements, robust 
 - Android 11 backup exclusion XML and Android 12+ cloud/device-transfer XML, in addition to existing `allowBackup=false` and no cleartext traffic.
 - R8 minification and shrinkResources on release, automatic source/unsigned-package permission/version/security checks, release lint and unit tests, standalone manual unsigned candidate workflow.
 - No publishing, automatic backend deployment, signing keys, or production APK uploaded. [Full release process and unresolved blockers](GROUP9_RELEASE_CHECKLIST.md).
+
+## Group 10 — Production acceptance
+
+- Android 16 edge-to-edge and API 35/36 emulator matrix.
+- CI-only disposable-key signing smoke test; no secret key or signed binary artifacts uploaded.
+- Manual signer-aware APK/AAB verifier and fail-closed, opt-in in-place version upgrade preflight.
+- Python security/upgrade unit tests and legacy SQLite upgrade instrumentation coverage.
+- Physical-device, manually deployed backend and privacy/compliance approval remain open gates; see [GROUP10_PRODUCTION_ACCEPTANCE.md](GROUP10_PRODUCTION_ACCEPTANCE.md).

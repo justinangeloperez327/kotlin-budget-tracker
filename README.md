@@ -2,7 +2,7 @@
 
 This is the **native Android Kotlin/Jetpack Compose port** of [next-budget-tracker](https://github.com/justinangeloperez327/next-budget-tracker), **not a Ktor website**.
 
-## Current state: Group 9 — release-candidate and security hardening
+## Current state: Group 10 — production acceptance and signed-release verification
 
 Android Studio project (Kotlin 2.2.21, Android Gradle Plugin 8.13.2, Gradle 8.13, Jetpack Compose BOM 2025.10.01 / Material 3, SDK 36, minimum API 26). Includes a responsive native navigation drawer, Sakura-inspired finance UI, complete monthly budget plan editor, category charts, device-only or web-account expense add/edit/delete, global search/category/month filters, safe CSV document export, character palettes and appearance modes, unit tests, Android instrumentation test sources and GitHub Actions CI.
 
@@ -108,3 +108,11 @@ The **Data integrity & backup** screen checks source-shaped financial relationsh
 The repository now builds Android release-candidate `0.9.0-rc.1` (`versionCode 9`) with R8 minification and resource shrinking. The pinned Gradle 8.13 Wrapper supports Windows/Linux. Android auto-backup/cloud/device-to-device exclusions protect the private finance database and Keystore-backed credentials. CI verifies an **unsigned** release APK/AAB and publishes only audit checksums; a **manual** GitHub Actions workflow may package unsigned candidates, without deploying anywhere.
 
 Production APK/AAB signing is opt-in and reads **four required** `BT_RELEASE_*` environment variables from the user's machine; no secrets are stored in GitHub. See [Group 9 release checklist](docs/GROUP9_RELEASE_CHECKLIST.md). No Play Store upload or automatic deployment has been configured.
+
+## Group 10 — Signed release preparation and production acceptance
+
+CI now includes API 35 and API 36 emulator checks, a disposable-key signing smoke test, offline release-security/upgrade tests, and a SQLite v1-to-v2 upgrade acceptance test. The CI-only key is not suitable for distribution and neither signed artifacts nor keys are uploaded.
+
+Manual release scripts verify that a user-signed APK/AAB matches the chosen upload key and that an in-place APK upgrade preserves the signing identity and increases versionCode before touching a device. Actual installation requires explicit confirmation. Android 16 edge-to-edge handling and accessible Back navigation have been hardened.
+
+**A real release key, staging backend and physical devices were not provided. No production signing or Play Store publication was performed.** See [Group 10 production checklist](docs/GROUP10_PRODUCTION_ACCEPTANCE.md) and [manual release approval template](docs/RELEASE_APPROVAL_TEMPLATE.md).
