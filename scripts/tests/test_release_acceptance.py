@@ -139,6 +139,30 @@ class SignedReleaseTest(unittest.TestCase):
                     signed.verify()
 
 
+
+class Android37SignerOutputTest(unittest.TestCase):
+    def test_scheme_specific_digests_for_same_cert_are_accepted(self):
+        output=(
+            "Verifies\nVerified using v2 scheme (APK Signature Scheme v2): true\n"
+            "Number of signers: 1\n"
+            "V2 Signer: certificate SHA-256 digest: " + CERT + "\n"
+            "V3.0 Signer: certificate SHA-256 digest: " + CERT + "\n"
+        )
+        self.assertEqual(signed.signing_fingerprint(output), CERT)
+
+    def test_different_signing_cert_across_schemes_is_rejected(self):
+        output=("V2 Signer: certificate SHA-256 digest: " + CERT + "\n"
+                "V3.0 Signer: certificate SHA-256 digest: " + OTHER)
+        with self.assertRaisesRegex(ValueError,"Multiple or inconsistent"):
+            signed.signing_fingerprint(output)
+
+    def test_multiple_numbered_signers_are_rejected_even_when_cert_same(self):
+        output=("Number of signers: 2\nSigner #1 certificate SHA-256 digest: " + CERT+
+                "\nSigner #2 certificate SHA-256 digest: "+CERT)
+        with self.assertRaisesRegex(ValueError,"exactly one"):
+            signed.signing_fingerprint(output)
+
+
 class UpgradeAcceptanceTest(unittest.TestCase):
     def test_signed_upgrade_preserves_package_and_certificate(self):
         with patch.object(upgrade, "inspect", side_effect=[

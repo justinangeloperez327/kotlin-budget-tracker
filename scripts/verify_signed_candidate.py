@@ -38,6 +38,34 @@ def capture(args: list[str]) -> str:
     return proc.stdout + "\n" + proc.stderr
 
 
+def signing_fingerprint(signature_output: str) -> str:
+    """Support pre-37 'Signer #1' and SDK 37+ 'V2/V3 Signer' certificate labels.
+
+    Different scheme labels for the SAME certificate are expected. Different
+    certificates or more than one numbered signer are never accepted.
+    """
+    numbered = re.findall(
+        r"Signer #(\d+) certificate SHA-256 digest:\s*([0-9a-f:]+)",
+        signature_output, re.I,
+    )
+    scheme = re.findall(
+        r"V\d+(?:\.\d+)? Signer:\s*certificate SHA-256 digest:\s*([0-9a-f:]+)",
+        signature_output, re.I,
+    )
+    certs = [value.replace(":", "").lower() for _, value in numbered]
+    certs.extend(value.replace(":", "").lower() for value in scheme)
+    require(certs and all(re.fullmatch(r"[0-9a-f]{64}", x) for x in certs),
+            "No complete APK signer SHA-256 fingerprint found")
+    require(len(set(certs)) == 1, "Multiple or inconsistent APK signing certificates")
+    if numbered:
+        require({signer for signer, _ in numbered} == {"1"},
+                "Expected exactly one numbered APK signer")
+    count = re.search(r"Number of signers:\s*(\d+)", signature_output, re.I)
+    if count:
+        require(int(count.group(1)) == 1, "Multiple APK signers are not approved")
+    return certs[0]
+
+
 def digest_file(path: Path) -> str:
     sha = hashlib.sha256()
     with path.open("rb") as reader:
@@ -77,11 +105,7 @@ def verify() -> dict:
     signature = capture([sdk_tool("apksigner"), "verify", "--verbose", "--print-certs", str(apk)])
     require(re.search(r"Verified using v[23] scheme.*:\s*true", signature, re.I) is not None,
             "APK must have a valid v2 or v3 signature")
-    matches = re.findall(r"Signer #(\d+) certificate SHA-256 digest:\s*([a-f0-9:]+)",
-                         signature, re.I)
-    require(len(matches) == 1 and matches[0][0] == "1",
-            "Expected exactly one APK signer")
-    apk_fingerprint = matches[0][1].replace(":", "").lower()
+    apk_fingerprint = signing_fingerprint(signature)
 
     # -storepass:env prevents accidentally exposing passwords as process arguments.
     keystore_info = capture([

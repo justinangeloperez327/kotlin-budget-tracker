@@ -12,7 +12,7 @@ import subprocess
 import sys
 
 from verify_release_candidate import PACKAGE, find_aapt, require, run_aapt
-from verify_signed_candidate import capture, sdk_tool
+from verify_signed_candidate import capture, sdk_tool, signing_fingerprint
 
 
 def inspect(apk: Path) -> tuple[str, int, str]:
@@ -23,10 +23,7 @@ def inspect(apk: Path) -> tuple[str, int, str]:
     signing=capture([sdk_tool("apksigner"),"verify","--verbose","--print-certs",str(apk)])
     require(re.search(r"Verified using v[23] scheme.*:\s*true",signing,re.I) is not None,
             "APK must have a valid Android v2/v3 signature")
-    matches=re.findall(r"Signer #(\d+) certificate SHA-256 digest:\s*([a-f0-9:]+)",
-                        signing,re.I)
-    require(len(matches)==1 and matches[0][0]=="1", "A single APK signer is required")
-    return (match.group(1),int(match.group(2)),matches[0][1].replace(":","").lower())
+    return (match.group(1),int(match.group(2)),signing_fingerprint(signing))
 
 
 def preflight(old: Path,new: Path) -> dict:
