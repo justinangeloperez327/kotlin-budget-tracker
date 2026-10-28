@@ -18,6 +18,8 @@ import dev.budgettracker.android.domain.FinanceSnapshot
 import dev.budgettracker.android.domain.parseMinor
 import dev.budgettracker.android.network.MobileApi
 import dev.budgettracker.android.network.MobileApiException
+import dev.budgettracker.android.network.RemoteSavePolicy
+import dev.budgettracker.android.network.RecoveryAction
 import dev.budgettracker.android.network.SecureSession
 import dev.budgettracker.android.network.ServerSnapshot
 import dev.budgettracker.android.network.StoredSession
@@ -265,18 +267,19 @@ class FinanceViewModel(application: Application): AndroidViewModel(application) 
                 onSaved()
             } catch (ex: Exception) {
                 if (session != null) {
-                    if (ex is MobileApiException && ex.status == 401) {
-                        clearRemoteCredentials()
-                        error = "Mobile session expired. Sign in again."
-                    } else {
-                        // Even a lost response could follow a committed save.
-                        // Never retry automatically or guess the next revision.
-                        syncBlocked = ex !is MobileApiException ||
-                            ex.status == 409 || ex.status >= 500
-                        error = if (syncBlocked)
-                            "Save cannot be confirmed or server data changed. Refresh before editing. " +
-                                (ex.message ?: "")
-                        else ex.message ?: "Server rejected this change"
+                    when (RemoteSavePolicy.actionFor(ex)) {
+                        RecoveryAction.SIGN_IN_AGAIN -> {
+                            clearRemoteCredentials()
+                            error = "Mobile session expired. Sign in again."
+                        }
+                        RecoveryAction.REFRESH_BEFORE_EDITING -> {
+                            // HTTP 200 with malformed JSON, a 400, or a lost reply
+                            // can all leave the committed revision uncertain.
+                            // Never repeat the mutation before fetching the server snapshot.
+                            syncBlocked = true
+                            error = "Save cannot be confirmed or server data changed. " +
+                                "Refresh before editing. " + (ex.message ?: "")
+                        }
                     }
                 } else error = ex.message ?: "Unable to save local changes"
             } finally { loading = false }
