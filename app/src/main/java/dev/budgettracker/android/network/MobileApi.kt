@@ -35,6 +35,13 @@ class MobileApi internal constructor(
 
     fun request(path: String, method: String, token: String? = null, body: JSONObject? = null): JSONObject {
         require(path.startsWith("/api/mobile/") && !path.contains(".."))
+        require(method in setOf("GET", "POST", "PUT")) { "Unsupported mobile API method" }
+        // Validate first: bad credentials or oversized financial data must never
+        // create a connection or transmit any request, even to a test server.
+        if (token != null) require(token.matches(Regex("[a-f0-9]{64}")))
+        val encodedBody = body?.toString()?.toByteArray(Charsets.UTF_8)?.also {
+            require(it.size <= 2 * 1024 * 1024) { "Workspace save exceeds 2 MiB" }
+        }
         val connection = connectionFactory(URL(base + path))
         connection.instanceFollowRedirects = false
         connection.connectTimeout = 10_000
@@ -43,17 +50,13 @@ class MobileApi internal constructor(
         connection.requestMethod = method
         connection.setRequestProperty("Accept", "application/json")
         connection.setRequestProperty("Cache-Control", "no-store")
-        if (token != null) {
-            require(token.matches(Regex("[a-f0-9]{64}")))
+        if (token != null)
             connection.setRequestProperty("Authorization", "Bearer " + token)
-        }
         try {
-            if (body != null) {
+            if (encodedBody != null) {
                 connection.doOutput = true
                 connection.setRequestProperty("Content-Type", "application/json")
-                val bytes = body.toString().toByteArray(Charsets.UTF_8)
-                require(bytes.size <= 2 * 1024 * 1024) { "Workspace save exceeds 2 MiB" }
-                connection.outputStream.use { it.write(bytes) }
+                connection.outputStream.use { it.write(encodedBody) }
             }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
