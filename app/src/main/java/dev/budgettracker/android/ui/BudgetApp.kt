@@ -97,7 +97,8 @@ fun BudgetApp(model: FinanceViewModel) {
             }
         }) {
             Scaffold(topBar = {
-                Column {
+                // Custom top bar must handle status/cutout insets on Android 15/16.
+                Column(Modifier.windowInsetsPadding(WindowInsets.statusBars)) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween) {
                         TextButton(onClick = { scope.launch { drawer.open() } },
@@ -112,7 +113,10 @@ fun BudgetApp(model: FinanceViewModel) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (history.size > 1) {
-                            IconButton(onClick = ::goBack,modifier=Modifier.testTag("navigate-back")) {
+                            IconButton(onClick = ::goBack,
+                                modifier=Modifier.testTag("navigate-back").semantics {
+                                    contentDescription = "Back to previous screen"
+                                }) {
                                 Text("‹",style=MaterialTheme.typography.headlineMedium)
                             }
                         }
