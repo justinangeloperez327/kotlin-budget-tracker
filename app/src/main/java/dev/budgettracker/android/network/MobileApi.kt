@@ -59,6 +59,10 @@ class MobileApi internal constructor(
                 connection.outputStream.use { it.write(encodedBody) }
             }
             val status = connection.responseCode
+            // RFC 9110: successful 204/205 responses do not carry JSON.
+            // Logout can therefore succeed without a response body, but a
+            // workspace save still requires a revision field.
+            if (status == 204 || status == 205) return JSONObject()
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val result = try {
                 if (stream == null) JSONObject() else JSONObject(readBounded(stream))
