@@ -1,5 +1,26 @@
 # Kotlin Budget Tracker (Android)
 
+## 📱 Download APK — Try on Android
+
+**Version:** `v0.9.0-rc.1` (debug/test build) · **Requires:** Android 8.0 or newer.
+
+### Download now
+
+**[⬇ Download Android APK (GitHub Actions ZIP)](https://github.com/justinangeloperez327/kotlin-budget-tracker/actions/runs/40657323503/artifacts/13749864973)**
+
+GitHub Actions provides a ZIP archive named `kotlin-budget-tracker-debug`. Download and **extract the ZIP**, then open `app-debug.apk` on your phone to install. You may need to sign in to GitHub to download workflow artifacts. This temporary artifact expires after 7 days.
+
+### Permanent, direct APK link (after the pre-release is published)
+
+**[⬇ Download v0.9.0-rc.1 APK](https://github.com/justinangeloperez327/kotlin-budget-tracker/releases/download/v0.9.0-rc.1/kotlin-budget-tracker-v0.9.0-rc.1-debug.apk)**
+
+**The direct release download is not live yet.** To enable it, [run the manual GitHub pre-release workflow](https://github.com/justinangeloperez327/kotlin-budget-tracker/actions/workflows/publish-test-apk-release.yml) on `main`, select `confirm = yes`, then select **Run workflow**. Once it succeeds, the APK will appear under [Releases](https://github.com/justinangeloperez327/kotlin-budget-tracker/releases), and the direct link above will work without ZIP extraction.
+
+> **Testing only:** This APK is debug-signed, not a Google Play/production release. Device-only mode works without a backend. Web-account sign-in requires a separately deployed compatible HTTPS backend. Exported device-only JSON backups are not encrypted. If Android reports a signing conflict with an existing installation, back up the app's local data before uninstalling anything.
+
+---
+
+
 This is the **native Android Kotlin/Jetpack Compose port** of [next-budget-tracker](https://github.com/justinangeloperez327/next-budget-tracker), **not a Ktor website**.
 
 ## Current state: Group 10 — production acceptance and signed-release verification
