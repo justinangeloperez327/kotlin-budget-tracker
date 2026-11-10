@@ -1,0 +1,92 @@
+name: Publish Android test APK pre-release
+
+# Explicitly manual. No automatic releases, Play Store uploads, or deployments.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Publish v0.9.0-rc.1 using the verified November 10 debug APK?"
+        required: true
+        type: choice
+        default: "no"
+        options:
+          - "no"
+          - "yes"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: budget-tracker-v0.9.0-rc.1-manual-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: ${{ github.ref == 'refs/heads/main' && inputs.confirm == 'yes' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Retrieve exactly the previously tested build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          gh run download 40657323503 \
+            --repo "$GITHUB_REPOSITORY" \
+            --name kotlin-budget-tracker-debug \
+            --dir release
+          test -f release/app-debug.apk
+
+      - name: Verify APK SHA-256 against the downloaded test build
+        run: |
+          set -euo pipefail
+          echo "c9611ccd3f657e015fc764835692d5a62a98d288413e8bf619ebb751a94bf90e  release/app-debug.apk" \
+            | sha256sum --check
+          mv release/app-debug.apk release/kotlin-budget-tracker-v0.9.0-rc.1-debug.apk
+          (
+            cd release
+            sha256sum kotlin-budget-tracker-v0.9.0-rc.1-debug.apk > kotlin-budget-tracker-v0.9.0-rc.1-debug.apk.sha256
+          )
+
+      - name: Prepare human-readable pre-release notes
+        run: |
+          cat > release-notes.md <<'EOF'
+          ## Kotlin Budget Tracker v0.9.0-rc.1 — Android testing pre-release
+
+          This is the same debug APK produced by successful [Android CI run #40657323503](https://github.com/justinangeloperez327/kotlin-budget-tracker/actions/runs/40657323503) from commit [702ddf85](https://github.com/justinangeloperez327/kotlin-budget-tracker/commit/702ddf85f57e504ced59edcd1ff37187eb0b7fa0).
+
+          **Install:** Download the attached kotlin-budget-tracker-v0.9.0-rc.1-debug.apk on an Android device running Android 8.0 or newer, open the file, and allow installation from that source when Android asks.
+
+          **What to test:** Device-only budgets, expenses, recurring bills, debts, savings, remittances, Philippine contributions and MP2, reports, themes, and manual device-only data backup/restore.
+
+          **Cautions:**
+          - Debug-signed test build, not a production-signed APK or Play Store distribution. Do not use it for sensitive or irreplaceable financial records.
+          - Web-account sign-in requires a separately manually deployed compatible HTTPS backend.
+          - The manual JSON backup is not encrypted. Keep exported financial data in a private, protected location.
+          - GitHub Actions debug signing keys may differ between builds. If Android reports an upgrade/signature conflict with an older APK, do not uninstall it before backing up its local records.
+          - No automatic publishing, Play Store deployment, or server data import/merge is included.
+
+          APK SHA-256 is included as a separate .sha256 asset so downloaded files can be checked for corruption.
+          EOF
+
+      - name: Publish pre-release once, at the exact APK source commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v0.9.0-rc.1"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $tag already exists. Refusing to overwrite a published APK."
+            exit 1
+          fi
+          gh release create "$tag" \
+            release/kotlin-budget-tracker-v0.9.0-rc.1-debug.apk \
+            release/kotlin-budget-tracker-v0.9.0-rc.1-debug.apk.sha256 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target 702ddf85f57e504ced59edcd1ff37187eb0b7fa0 \
+            --title "Kotlin Budget Tracker v0.9.0-rc.1 — Android test APK" \
+            --notes-file release-notes.md \
+            --prerelease
